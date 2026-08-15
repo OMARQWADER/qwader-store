@@ -44,7 +44,8 @@ export default async function vercelHandler(
     const queryString = req.url && req.url.includes("?")
       ? req.url.slice(req.url.indexOf("?"))
       : "";
-    req.url = path + queryString;
+    const fullPath = path.startsWith("/api") ? path : `/api${path}`;
+    req.url = fullPath + queryString;
     // `originalUrl` is not part of VercelRequest's type, but Express and our
     // legacy legacyApiRouter read it — define it on the request object.
     const anyReq = req as unknown as Record<string, unknown>;
