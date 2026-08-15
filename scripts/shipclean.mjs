@@ -1,0 +1,14 @@
+import { sql } from "../server/legacy/db.js";
+const s = sql();
+const rows = await s`select value from site_content where key = 'shipping'`;
+const data = rows[0]?.value || { enabled: true, companies: [] };
+const before = (data.companies || []).map(c => `${c.id} (${c.enabled}) regions:${(c.regions||[]).length}`);
+console.log("BEFORE:", before.join(" | "));
+const keep = (data.companies || []).filter(c => c.id === "comp-default-1");
+const after = keep.map(c => `${c.id} (${c.enabled}) regions:${(c.regions||[]).map(r => r.city).join(",")}`);
+console.log("AFTER:", after.join(" | "));
+const res = await s`update site_content set value = ${JSON.stringify({ ...data, companies: keep })}::jsonb where key = 'shipping'`;
+console.log("updated:", res.count || res?.[0]);
+const rows2 = await s`select value from site_content where key = 'shipping'`;
+console.log("VERIFY:", JSON.stringify(rows2[0]?.value));
+process.exit(0);
