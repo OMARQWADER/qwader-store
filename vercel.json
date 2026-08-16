@@ -7,7 +7,10 @@
   "installCommand": "npm install",
   "functions": {
     "api/vercel-handler.js": {
-      "includeFiles": "dist/server/**"
+      "includeFiles": [
+        "dist/server/**",
+        "node_modules/jsonwebtoken/**"
+      ]
     }
   },
   "routes": [
