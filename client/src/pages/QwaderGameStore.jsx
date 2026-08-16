@@ -1221,6 +1221,7 @@ function AuthModal({ onClose, onLoggedIn, setToast }) {
   const [forgotCode, setForgotCode] = useState("");
   const [forgotResetToken, setForgotResetToken] = useState("");
   const [newPw, setNewPw] = useState("");
+  const [resending, setResending] = useState(false); // 2FA resend button state
 
   const submit = async (e) => {
     e.preventDefault();
@@ -1333,7 +1334,6 @@ function AuthModal({ onClose, onLoggedIn, setToast }) {
   }
 
   if (pending2FA) {
-    const [resending, setResending] = useState(false);
     const resend2FA = async () => {
       setErr(""); setResending(true);
       try {
