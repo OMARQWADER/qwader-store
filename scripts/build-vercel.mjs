@@ -15,9 +15,15 @@ function run(command) {
 
 console.log("========== QWADER STORE VERCEL BUILD ==========");
 
+//
+// 1. CLIENT
+//
 console.log("\n========== 1. VITE BUILD ==========");
 run("vite build");
 
+//
+// 2. VERCEL HANDLER
+//
 console.log("\n========== 2. VERCEL HANDLER ==========");
 
 fs.mkdirSync(path.join(root, "api"), { recursive: true });
@@ -26,105 +32,146 @@ run(
   "esbuild server/_core/vercelEntry.ts --platform=node --bundle --format=esm --outfile=api/vercel-handler.js --packages=external"
 );
 
+//
+// 3. CLEAN SERVER
+//
 console.log("\n========== 3. CLEAN SERVER ==========");
 
-fs.rmSync(path.join(root, "dist", "server"), {
+const serverDir = path.join(root, "dist", "server");
+
+fs.rmSync(serverDir, {
   recursive: true,
   force: true,
 });
 
-console.log("\n========== 4. COMPILE SERVER ==========");
+fs.mkdirSync(serverDir, {
+  recursive: true,
+});
 
-/*
- * Do NOT bundle the whole server.
- *
- * The legacy server contains dynamic imports such as:
- *   import("../_lib/common.js")
- *
- * Bundling the entire tree makes esbuild try to resolve those dynamic
- * imports and breaks the build.
- *
- * Instead we compile the server normally and keep npm packages external.
- */
+//
+// 4. COMPILE LEGACY SERVER
+//
+console.log("\n========== 4. COMPILE LEGACY SERVER ==========");
+
 run(
   'esbuild "server/**/*.ts" "server/**/*.js" --platform=node --packages=external --format=esm --outdir=dist/server'
 );
 
+//
+// 5. FIX EXTENSIONS
+//
 console.log("\n========== 5. FIX EXTENSIONS ==========");
 
 run("node scripts/fix-extensions.mjs");
 
-console.log("\n========== 6. COPY JSONWEBTOKEN INTO DIST ==========");
+//
+// 6. COPY ONLY REQUIRED RUNTIME PACKAGES
+//
+console.log("\n========== 6. COPY REQUIRED PACKAGES ==========");
 
-const srcJwt = path.join(root, "node_modules", "jsonwebtoken");
-const dstJwt = path.join(root, "dist", "server", "node_modules", "jsonwebtoken");
+const requiredPackages = [
+  "jsonwebtoken",
+  "bcryptjs",
+  "nodemailer",
+  "jose",
+];
 
-if (!fs.existsSync(srcJwt)) {
-  throw new Error("jsonwebtoken is not installed in node_modules");
-}
+const nodeModulesDir = path.join(serverDir, "node_modules");
 
-fs.mkdirSync(path.dirname(dstJwt), { recursive: true });
-
-fs.cpSync(srcJwt, dstJwt, {
+fs.mkdirSync(nodeModulesDir, {
   recursive: true,
 });
 
-console.log(`✅ Copied jsonwebtoken to: ${dstJwt}`);
+function copyPackage(packageName) {
+  const source = path.join(root, "node_modules", packageName);
+  const destination = path.join(nodeModulesDir, packageName);
 
-console.log("\n========== 7. PATCH NODE MODULE RESOLUTION ==========");
+  if (!fs.existsSync(source)) {
+    throw new Error(`Package not found: ${packageName}`);
+  }
 
-/*
- * dist/server/legacy/*.js is executed from /var/task/dist/server/...
- *
- * Node searches node_modules upwards:
- *
- * dist/server/legacy
- * dist/server
- * dist
- * /var/task
- *
- * Therefore putting jsonwebtoken here:
- *
- * dist/server/node_modules/jsonwebtoken
- *
- * allows legacy files to resolve it without relying on Vercel's
- * root node_modules packaging.
- */
+  fs.cpSync(source, destination, {
+    recursive: true,
+    force: true,
+  });
 
-console.log("✅ dist/server/node_modules/jsonwebtoken exists");
-
-console.log("\n========== 8. CHECK JSONWEBTOKEN ==========");
-
-const jwtPackage = path.join(
-  root,
-  "dist",
-  "server",
-  "node_modules",
-  "jsonwebtoken",
-  "package.json"
-);
-
-if (!fs.existsSync(jwtPackage)) {
-  throw new Error("❌ jsonwebtoken was not copied correctly");
+  console.log(`✅ ${packageName}`);
 }
 
-console.log("✅ jsonwebtoken package found inside dist/server");
+for (const pkg of requiredPackages) {
+  copyPackage(pkg);
+}
 
-console.log("\n========== 9. CHECK LEGACY FILES ==========");
+//
+// 7. CHECK PACKAGE DEPENDENCIES
+//
+console.log("\n========== 7. CHECK REQUIRED PACKAGES ==========");
 
-for (const file of [
-  "dist/server/legacy/auth.js",
-  "dist/server/legacy/auth.action.js",
-]) {
-  const full = path.join(root, file);
+for (const pkg of requiredPackages) {
+  const packagePath = path.join(
+    serverDir,
+    "node_modules",
+    pkg,
+    "package.json"
+  );
+
+  if (fs.existsSync(packagePath)) {
+    const info = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+
+    console.log(
+      `✅ ${pkg} ${info.version || ""}`
+    );
+  } else {
+    throw new Error(`Missing package.json for ${pkg}`);
+  }
+}
+
+//
+// 8. CHECK LEGACY FILES
+//
+console.log("\n========== 8. CHECK LEGACY FILES ==========");
+
+const legacyFiles = [
+  "legacy/auth.js",
+  "legacy/auth.action.js",
+  "legacy/mailer.js",
+];
+
+for (const file of legacyFiles) {
+  const full = path.join(serverDir, file);
 
   if (fs.existsSync(full)) {
     console.log(`✅ ${file}`);
   } else {
-    console.log(`⚠️ ${file} not found`);
+    throw new Error(`Missing legacy file: ${file}`);
   }
 }
 
+//
+// 9. CHECK RUNTIME IMPORTS
+//
+console.log("\n========== 9. CHECK RUNTIME IMPORTS ==========");
+
+run(
+  'grep -R -nE \'from "(jsonwebtoken|bcryptjs|nodemailer|jose)"\' dist/server/legacy || true'
+);
+
+//
+// 10. CHECK PACKAGE SIZES
+//
+console.log("\n========== 10. PACKAGE SIZES ==========");
+
+run(
+  "du -sh dist/server/node_modules/* 2>/dev/null | sort -hr"
+);
+
+//
+// 11. FINAL SIZE
+//
+console.log("\n========== 11. FINAL SERVER SIZE ==========");
+
+run("du -sh dist/server");
+
 console.log("\n==========================================");
-console.log("✅ Vercel build completed successfully");
+console.log("✅ QWADER VERCEL BUILD COMPLETED");
 console.log("==========================================");
