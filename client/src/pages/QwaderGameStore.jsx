@@ -188,7 +188,7 @@ function SocialLinksRow({ socialLinks, size = 15 }) {
 function Footer({ socialLinks, setTab }) {
   return (
     <footer className="max-w-4xl mx-auto px-4 pb-10 pt-6 text-center relative" style={{ borderTop: "1px solid rgba(47,125,244,0.16)" }}>
-      <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="w-14 h-14 rounded-2xl object-contain mx-auto mb-3" />
+      <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="w-14 h-14 rounded-2xl object-contain mx-auto mb-3" />
       <div className="absolute inset-x-0 -top-px h-10 pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(47,125,244,0.12) 0%, transparent 70%)" }} />
       <SocialLinksRow socialLinks={socialLinks} />
       <button onClick={() => setTab("track")} className="text-[11px] font-bold mt-4 flex items-center justify-center gap-1 mx-auto px-3 py-1.5 rounded-full" style={{ color: "#60a5fa", background: "rgba(47,125,244,0.1)", border: "1px solid rgba(47,125,244,0.3)" }}>
@@ -672,7 +672,7 @@ export default function QwaderGameStore() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "#030612", fontFamily: "'Cairo', 'Tajawal', system-ui, sans-serif" }}>
         <span className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(700px 420px at 50% 45%, rgba(47,125,244,0.16), transparent 65%), radial-gradient(520px 340px at 75% 30%, rgba(0,48,144,0.3), transparent 70%)" }} />
-        <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="relative w-36 h-36 rounded-2xl object-contain" style={{ filter: "drop-shadow(0 0 34px rgba(47,125,244,0.5))" }} />
+        <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="relative w-36 h-36 rounded-2xl object-contain" style={{ filter: "drop-shadow(0 0 34px rgba(47,125,244,0.5))" }} />
         <Loader2 className="animate-spin relative" color="#2f7df4" size={26} style={{ filter: "drop-shadow(0 0 12px rgba(47,125,244,0.7))" }} />
         <p className="relative text-xs font-bold" style={{ color: "#8ea3c9" }}>جارٍ تحميل المتجر...</p>
       </div>
@@ -685,7 +685,7 @@ export default function QwaderGameStore() {
     return (
       <div dir="rtl" className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: "#050814", color: "#eef0ff", fontFamily: "system-ui, sans-serif" }}>
         <div>
-          <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="w-16 h-16 rounded-2xl object-contain mx-auto mb-3" />
+          <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="w-16 h-16 rounded-2xl object-contain mx-auto mb-3" />
           <h1 className="text-xl font-black mb-2">QWADER STORE</h1>
           <p className="text-sm max-w-xs mx-auto" style={{ color: "#c3cbe8" }}>{maintenance.message || DEFAULT_MAINTENANCE.message}</p>
           <div className="mt-5"><SocialLinksRow socialLinks={socialLinks} /></div>
@@ -987,7 +987,7 @@ function TopNav({ tab, setTab, unreadCount, session, setAuthOpen, cartCount, set
     <header className="qx-nav">
       <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 shrink-0">
-          <img src={(branding && branding.logoUrl) ? branding.logoUrl : "/manus-storage/qwader-logo_88ca51bf.png"} alt="QWADER STORE" className="w-10 h-10 rounded-xl object-contain" style={{ boxShadow: "0 0 16px rgba(47,125,244,0.35)" }} />
+          <img src={(branding && branding.logoUrl) ? branding.logoUrl : "/QWADER_STOR_logo_under_2MB.jpg"} alt="QWADER STORE" className="w-10 h-10 rounded-xl object-contain" style={{ boxShadow: "0 0 16px rgba(47,125,244,0.35)" }} />
           <span className="font-black tracking-wide text-sm hidden sm:inline qx-grad" style={{ fontSize: "0.95rem" }}>QWADER STORE</span>
         </div>
         <nav className="hidden lg:flex items-center gap-1">
@@ -1924,7 +1924,7 @@ function StorePage({ games, prices, setTab, addToCart, session, submitQuickOrder
         <span className="qx-orb" style={{ width: 280, height: 280, bottom: "-20%", left: "4%", background: "rgba(0,48,144,0.4)", animationDelay: "5s" }} />
         <div className="px-5 py-12 sm:px-10 sm:py-14 relative">
           <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
-            <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl object-contain qx-reveal" style={{ filter: "drop-shadow(0 0 40px rgba(47,125,244,0.45))" }} loading="eager" />
+            <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl object-contain qx-reveal" style={{ filter: "drop-shadow(0 0 40px rgba(47,125,244,0.45))" }} loading="eager" />
             <div className="text-center sm:text-right">
               <p className="qx-chip qx-chip--active inline-flex items-center gap-2 mb-4 px-4 py-1.5 text-[11px] font-black">
                 <Gamepad2 size={13} /> المتجر الرقمي الأول لحسابات وألعاب الألعاب
