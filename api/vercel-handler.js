@@ -236,11 +236,8 @@ var GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInf
 var OAuthService = class {
   constructor(client) {
     this.client = client;
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
-      );
+    if (ENV.oAuthServerUrl) {
+      console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
     }
   }
   decodeState(state) {
@@ -749,14 +746,22 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 function resolveLegacyModule(file) {
   const dir = import.meta.dirname;
-  const projectRoot = path.resolve(dir, "..", "..");
-  const source = path.join(projectRoot, "server", "legacy", `${file}.js`);
-  const compiled = path.join(projectRoot, "dist", "server", "legacy", `${file}.js`);
-  if (process.env.NODE_ENV !== "production" && fs.existsSync(source)) {
-    return pathToFileURL(source).href;
+  const candidateRoots = [
+    path.resolve(dir),
+    path.resolve(dir, ".."),
+    path.resolve(dir, "..", ".."),
+    path.resolve(dir, "..", "..", "..")
+  ];
+  const preferSource = process.env.NODE_ENV !== "production";
+  for (const root of candidateRoots) {
+    const source = path.join(root, "server", "legacy", `${file}.js`);
+    const compiled = path.join(root, "dist", "server", "legacy", `${file}.js`);
+    if (preferSource && fs.existsSync(source)) return pathToFileURL(source).href;
+    if (fs.existsSync(compiled)) return pathToFileURL(compiled).href;
+    if (fs.existsSync(source)) return pathToFileURL(source).href;
   }
-  if (fs.existsSync(compiled)) return pathToFileURL(compiled).href;
-  return pathToFileURL(source).href;
+  const projectRoot = path.resolve(dir, "..", "..");
+  return pathToFileURL(path.join(projectRoot, "server", "legacy", `${file}.js`)).href;
 }
 function legacyApiRouter() {
   const api = Router();
@@ -885,7 +890,8 @@ async function vercelHandler(req, res) {
     }
     if (!path2) path2 = "/";
     const queryString = req.url && req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-    req.url = path2 + queryString;
+    const fullPath = path2.startsWith("/api") ? path2 : `/api${path2}`;
+    req.url = fullPath + queryString;
     const anyReq = req;
     if (!anyReq.originalUrl) anyReq.originalUrl = req.url;
     const app = await getVercelApp();

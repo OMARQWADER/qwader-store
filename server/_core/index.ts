@@ -3,7 +3,6 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { legacyApiRouter } from "../legacy/router";
@@ -46,7 +45,6 @@ async function startServer() {
   registerStorageProxy(app);
   // Ensure the drizzle users table + additive OAuth columns exist (idempotent).
   await ensureSchema();
-  registerOAuthRoutes(app);
   // Legacy QWADER STORE REST API (external Neon Postgres)
   app.use("/api", legacyApiRouter());
 
