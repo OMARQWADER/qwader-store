@@ -26,23 +26,24 @@ function resolveLegacyModule(file: string): string {
   //  - the bundle dir, which sits ONE level below the project root
   // Legacy .js files always live at <project-root>/server/legacy/, so climb
   // to the project root accordingly before joining the source path.
-  const dir = typeof import.meta.dirname === "string" ? import.meta.dirname : process.cwd();
-  // Bundle directory cases:
-  //   .../dist  → normal production build (dist/index.js)
-  //   .../api   → Vercel serverless bundle (api/vercel-handler.js at project root)
-  const isBundleDir =
-    dir.endsWith(`${path.sep}dist`) || dir.endsWith("/dist") ||
-    dir.endsWith(`${path.sep}api`) || dir.endsWith("/api");
-  // Every bundle layout sits exactly one level below the project root:
-  // <root>/dist or <root>/api → project root is the parent directory.
-  const projectRoot = isBundleDir ? path.resolve(dir, "..") : path.resolve(dir, "..", "..");
+  // import.meta.dirname is reliable in Node 20+ (tsx dev runtime, vitest,
+  // esbuild bundles): here it is either .../server/legacy (this source file's
+  // own directory) or .../dist/server/legacy (bundled copy). Climbing two
+  // levels from either layout lands at the project root — no cwd heuristics.
+  const dir = import.meta.dirname;
+  const projectRoot = path.resolve(dir, "..", "..");
   // Legacy action files import TypeScript modules (e.g. ../storage.ts).
   // Node cannot import .ts at runtime, so builds emit JS copies of the whole
-  // server to dist/server/. Prefer the compiled JS when present; fall back to
-  // the TS source tree (dev / tsx runtime).
+  // server to dist/server/. In production the compiled copy is the source of
+  // truth; in development (tsx / vitest) prefer the SOURCE tree — a stale
+  // dist/server from a previous build must never shadow fresh source edits.
+  const source = path.join(projectRoot, "server", "legacy", `${file}.js`);
   const compiled = path.join(projectRoot, "dist", "server", "legacy", `${file}.js`);
+  if (process.env.NODE_ENV !== "production" && fs.existsSync(source)) {
+    return pathToFileURL(source).href;
+  }
   if (fs.existsSync(compiled)) return pathToFileURL(compiled).href;
-  return pathToFileURL(path.join(projectRoot, "server", "legacy", `${file}.js`)).href;
+  return pathToFileURL(source).href;
 }
 
 export function legacyApiRouter(): Router {

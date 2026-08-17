@@ -214,7 +214,7 @@ export default function About() {
   const openNow = data ? isStoreOpenNow(data.hours) : null;
   const todayEn = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][new Date().getDay()];
   const today = data?.hours.find((h) => h.en === todayEn);
-  const whatsappText = "مرحبًا QWADERGAME، شايف صفحة من نحن على الموقع وبدي أستفسر عن طلب.";
+  const whatsappText = "مرحبًا QWADER STORE، شايف صفحة من نحن على الموقع وبدي أستفسر عن طلب.";
 
   return (
     <div className="min-h-screen" style={glassBg}>
@@ -240,7 +240,7 @@ export default function About() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black mb-4" style={{ background: "rgba(59,130,246,0.14)", color: VIOLET, border: "1px solid rgba(59,130,246,0.35)" }}>
             <Store size={13} /> من نحن
           </div>
-          <h1 className="font-black text-3xl sm:text-4xl mb-3 qx-grad">QWADERGAME</h1>
+          <h1 className="font-black text-3xl sm:text-4xl mb-3 qx-grad">QWADER STORE</h1>
           {data?.headline && <p className="text-sm font-bold" style={{ color: "#cfe0ff" }}>{data.headline}</p>}
         </div>
 
@@ -258,7 +258,7 @@ export default function About() {
                 <Gamepad2 size={16} style={{ color: VIOLET }} /> قصتنا
               </h3>
               <p className="text-sm leading-7" style={{ color: "#eaf0ff" }}>
-                {data?.story || "QWADERGAME متجرك الموثوق لبطاقات الألعاب والاشتراكات وأحدث الألعاب الرقمية بأفضل الأسعار وأسرع تسليم."}
+                {data?.story || "QWADER STORE متجرك الموثوق لبطاقات الألعاب والاشتراكات وأحدث الألعاب الرقمية بأفضل الأسعار وأسرع تسليم."}
               </p>
             </section>
 

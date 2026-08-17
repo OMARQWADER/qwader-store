@@ -3,7 +3,7 @@ import {
   Gamepad2, Send, Lock, Plus, Trash2, Save, Settings, LogOut, Bell, Home, Menu, Zap,
   MessageCircle, CheckCircle2, ShieldCheck, Loader2, Sparkles, Phone,
   ShoppingCart, User, UserPlus, LogIn, X, Package, Users as UsersIcon,
-  CreditCard, ChevronRight, Minus, Image as ImageIcon, Upload, History, FileText,
+  CreditCard, ChevronRight, Minus, ArrowRight, Image as ImageIcon, Upload, History, FileText,
   Search, Star, Heart, HelpCircle, Info, Quote, Printer, Truck, Award,
   BarChart3, Download, UploadCloud, Tag, Gift, KeyRound, ShieldAlert, Crown,
   Eye, EyeOff, Camera, Moon, MapPin, Archive, Smartphone, AlertTriangle,
@@ -68,7 +68,7 @@ const DEFAULT_TESTIMONIALS = [
   { id: "t2", name: "سارة", text: "وصلتني البطاقة خلال دقائق، خدمة محترمة." },
 ];
 
-const DEFAULT_ABOUT = "QWADERGAME متجرك الموثوق لبطاقات الألعاب والاشتراكات وأحدث الألعاب الرقمية بأفضل الأسعار وأسرع تسليم.";
+const DEFAULT_ABOUT = "QWADER STORE متجرك الموثوق لبطاقات الألعاب والاشتراكات وأحدث الألعاب الرقمية بأفضل الأسعار وأسرع تسليم.";
 
 const OWNER_WHATSAPP = "0779538304";
 
@@ -188,7 +188,7 @@ function SocialLinksRow({ socialLinks, size = 15 }) {
 function Footer({ socialLinks, setTab }) {
   return (
     <footer className="max-w-4xl mx-auto px-4 pb-10 pt-6 text-center relative" style={{ borderTop: "1px solid rgba(47,125,244,0.16)" }}>
-      <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="w-14 h-14 rounded-2xl object-contain mx-auto mb-3" />
+      <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="w-14 h-14 rounded-2xl object-contain mx-auto mb-3" />
       <div className="absolute inset-x-0 -top-px h-10 pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(47,125,244,0.12) 0%, transparent 70%)" }} />
       <SocialLinksRow socialLinks={socialLinks} />
       <button onClick={() => setTab("track")} className="text-[11px] font-bold mt-4 flex items-center justify-center gap-1 mx-auto px-3 py-1.5 rounded-full" style={{ color: "#60a5fa", background: "rgba(47,125,244,0.1)", border: "1px solid rgba(47,125,244,0.3)" }}>
@@ -214,7 +214,7 @@ function Footer({ socialLinks, setTab }) {
 // share a product via the native share sheet where available, falling
 // back to opening a WhatsApp share link (no account/API needed either way)
 function shareProduct(name) {
-  const text = `شوف ${name} بمتجر QWADERGAME! ${typeof window !== "undefined" ? window.location.origin : ""}`;
+  const text = `شوف ${name} بمتجر QWADER STORE! ${typeof window !== "undefined" ? window.location.origin : ""}`;
   if (typeof navigator !== "undefined" && navigator.share) {
     navigator.share({ title: name, text }).catch(() => {});
   } else if (typeof window !== "undefined") {
@@ -446,6 +446,7 @@ export default function QwaderGameStore() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const [toast, setToast] = useState(null);
+  const [cartBump, setCartBump] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifList, setNotifList] = useState([]);
@@ -561,6 +562,8 @@ export default function QwaderGameStore() {
       ? cart.map(c => c.pid === item.pid ? { ...c, qty: c.qty + 1 } : c)
       : [...cart, { ...item, qty: 1 }];
     persistCart(next);
+    setCartBump(true);
+    setTimeout(() => setCartBump(false), 450);
     setToast(`✅ تمت الإضافة: ${item.name}`);
     setTimeout(() => setToast(null), 1800);
   };
@@ -672,7 +675,7 @@ export default function QwaderGameStore() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "#030612", fontFamily: "'Cairo', 'Tajawal', system-ui, sans-serif" }}>
         <span className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(700px 420px at 50% 45%, rgba(47,125,244,0.16), transparent 65%), radial-gradient(520px 340px at 75% 30%, rgba(0,48,144,0.3), transparent 70%)" }} />
-        <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="relative w-36 h-36 rounded-2xl object-contain" style={{ filter: "drop-shadow(0 0 34px rgba(47,125,244,0.5))" }} />
+        <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="relative w-36 h-36 rounded-2xl object-contain" style={{ filter: "drop-shadow(0 0 34px rgba(47,125,244,0.5))" }} />
         <Loader2 className="animate-spin relative" color="#2f7df4" size={26} style={{ filter: "drop-shadow(0 0 12px rgba(47,125,244,0.7))" }} />
         <p className="relative text-xs font-bold" style={{ color: "#8ea3c9" }}>جارٍ تحميل المتجر...</p>
       </div>
@@ -685,7 +688,7 @@ export default function QwaderGameStore() {
     return (
       <div dir="rtl" className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: "#050814", color: "#eef0ff", fontFamily: "system-ui, sans-serif" }}>
         <div>
-          <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="w-16 h-16 rounded-2xl object-contain mx-auto mb-3" />
+          <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="w-16 h-16 rounded-2xl object-contain mx-auto mb-3" />
           <h1 className="text-xl font-black mb-2">QWADER STORE</h1>
           <p className="text-sm max-w-xs mx-auto" style={{ color: "#c3cbe8" }}>{maintenance.message || DEFAULT_MAINTENANCE.message}</p>
           <div className="mt-5"><SocialLinksRow socialLinks={socialLinks} /></div>
@@ -700,7 +703,7 @@ export default function QwaderGameStore() {
       <span className="qx-orb hidden md:block" style={{ width: 320, height: 320, top: "32%", left: "-10%", background: "rgba(0,48,144,0.30)", animationDelay: "3s" }} />
       <span className="qx-orb hidden md:block" style={{ width: 340, height: 340, bottom: "6%", right: "18%", background: "rgba(47,125,244,0.10)", animationDelay: "7s" }} />
       <TopNav tab={tab} setTab={setTab} unreadCount={unreadCount} wishlistCount={wishlist.length}
-        session={session} setAuthOpen={setAuthOpen} cartCount={cartCount} setCartOpen={setCartOpen}
+        session={session} setAuthOpen={setAuthOpen} cartCount={cartCount} cartBump={cartBump} setCartOpen={setCartOpen}
         doLogout={doLogout} notifCount={notifCount} notifOpen={notifOpen} setNotifOpen={setNotifOpen}
         notifList={notifList} branding={storeBranding} />
 
@@ -756,13 +759,11 @@ export default function QwaderGameStore() {
               setMyOrders(o => [order, ...o]);
               if (discountApplied > 0) setSession(s => s ? { ...s, discountPercent: 0, discountReason: "" } : s);
               await persistCart([]);
-              setCartOpen(false);
               setReceipt(order);
-              setToast("🎉 تم إرسال طلبك مع إثبات الدفع! رح نراجعه ونأكده");
+              return order;
             } catch (e) {
-              setToast("❌ " + e.message);
+              throw e;
             }
-            setTimeout(() => setToast(null), 4000);
           }} />
       )}
 
@@ -876,7 +877,7 @@ function ReceiptModal({ order, onClose, socialLinks, pickupPrepMinutes = 30 }) {
         <div className="text-center mb-4">
           <CheckCircle2 size={30} color="#2dd4bf" className="mx-auto mb-2" />
           <h2 className="font-black text-lg">إيصال الطلب</h2>
-          <p className="text-xs" style={{ color: "#c3cbe8" }}>QWADERGAME — #{order.id.slice(-6)}</p>
+          <p className="text-xs" style={{ color: "#c3cbe8" }}>QWADER STORE — #{order.id.slice(-6)}</p>
         </div>
         <div className="text-xs mb-3" style={{ color: "#c3cbe8" }}>{new Date(order.createdAt || order.ts).toLocaleString("ar")}</div>
         <div className="space-y-1.5 mb-4 text-sm">
@@ -944,7 +945,7 @@ function ReceiptModal({ order, onClose, socialLinks, pickupPrepMinutes = 30 }) {
 /* =================================================================
    NAV
 ================================================================= */
-function TopNav({ tab, setTab, unreadCount, session, setAuthOpen, cartCount, setCartOpen, doLogout, wishlistCount, notifCount, notifOpen, setNotifOpen, notifList, branding }) {
+function TopNav({ tab, setTab, unreadCount, session, setAuthOpen, cartCount, cartBump, setCartOpen, doLogout, wishlistCount, notifCount, notifOpen, setNotifOpen, notifList, branding }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const isAdminAccount = session && (session.role === "owner" || session.role === "staff");
   const [myUnreadChat, setMyUnreadChat] = useState(false);
@@ -987,7 +988,7 @@ function TopNav({ tab, setTab, unreadCount, session, setAuthOpen, cartCount, set
     <header className="qx-nav">
       <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 shrink-0">
-          <img src={(branding && branding.logoUrl) ? branding.logoUrl : "/QWADER_STOR_logo_under_2MB.jpg"} alt="QWADER STORE" className="w-10 h-10 rounded-xl object-contain" style={{ boxShadow: "0 0 16px rgba(47,125,244,0.35)" }} />
+          <img src={(branding && branding.logoUrl) ? branding.logoUrl : "/manus-storage/qwader-logo_88ca51bf.png"} alt="QWADER STORE" className="w-10 h-10 rounded-xl object-contain" style={{ boxShadow: "0 0 16px rgba(47,125,244,0.35)" }} />
           <span className="font-black tracking-wide text-sm hidden sm:inline qx-grad" style={{ fontSize: "0.95rem" }}>QWADER STORE</span>
         </div>
         <nav className="hidden lg:flex items-center gap-1">
@@ -998,10 +999,10 @@ function TopNav({ tab, setTab, unreadCount, session, setAuthOpen, cartCount, set
         </nav>
         <div className="flex items-center gap-1.5 justify-end">
           <div className="hidden lg:flex items-center gap-1">
-          <button onClick={() => setCartOpen(true)} className="qx-btn qx-btn-primary px-3 py-2 text-xs"
+          <button onClick={() => setCartOpen(true)} className={"qx-btn qx-btn-primary px-3 py-2 text-xs" + (cartBump ? " qx-cart-bump" : "")}
             style={{ height: 36 }}>
             <ShoppingCart size={15} /> <span className="hidden sm:inline">السلة</span>
-            {cartCount > 0 && <span className="min-w-4 h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center" style={{ background: "#fbbf24", color: "#3b1c00" }}>{cartCount}</span>}
+            {cartCount > 0 && <span className={"min-w-4 h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center" + (cartBump ? " qx-badge-pop" : "")} style={{ background: "#fbbf24", color: "#3b1c00" }}>{cartCount}</span>}
           </button>
           <button onClick={() => setTab("wishlist")} className={`qx-btn px-3 py-2 text-xs ${tab === "wishlist" ? "qx-chip--active" : "qx-btn-ghost"}`}>
             <Heart size={15} />
@@ -1020,10 +1021,10 @@ function TopNav({ tab, setTab, unreadCount, session, setAuthOpen, cartCount, set
           </button>
           )}
 
-          <button onClick={() => setCartOpen(true)} className="lg:hidden relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90"
+          <button onClick={() => setCartOpen(true)} className={"lg:hidden relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90" + (cartBump ? " qx-cart-bump" : "")}
             style={{ background: "rgba(47,125,244,0.12)", border: "1px solid rgba(47,125,244,0.45)", color: "#60a5fa" }}>
             <ShoppingCart size={16} />
-            {cartCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center" style={{ background: "#fbbf24", color: "#3b1c00" }}>{cartCount}</span>}
+            {cartCount > 0 && <span className={"absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center" + (cartBump ? " qx-badge-pop" : "")} style={{ background: "#fbbf24", color: "#3b1c00" }}>{cartCount}</span>}
           </button>
 
           <button onClick={() => setTab("wishlist")} className="lg:hidden relative w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90"
@@ -1206,6 +1207,7 @@ function AuthModal({ onClose, onLoggedIn, setToast }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [lockedMsg, setLockedMsg] = useState("");
+  const [resending, setResending] = useState(false); // resending 2FA code — hoisted to the top so hook order is stable across all render paths
 
   // signup code-verification step
   const [pendingSignup, setPendingSignup] = useState(null); // { pendingToken, method }
@@ -1221,7 +1223,6 @@ function AuthModal({ onClose, onLoggedIn, setToast }) {
   const [forgotCode, setForgotCode] = useState("");
   const [forgotResetToken, setForgotResetToken] = useState("");
   const [newPw, setNewPw] = useState("");
-  const [resending, setResending] = useState(false); // 2FA resend button state
 
   const submit = async (e) => {
     e.preventDefault();
@@ -1482,11 +1483,40 @@ function CartDrawer({ cart, changeQty, removeFromCart, total, onClose, session, 
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponErr, setCouponErr] = useState("");
-  const [step, setStep] = useState("cart"); // cart | pay
-  const [paymentMethod, setPaymentMethod] = useState(null); // 'bank' | 'cliq'
+  const [step, setStep] = useState("cart"); // cart | pay | review | done
+  const [placedOrder, setPlacedOrder] = useState(null); // { id } kept for the done screen
+  const [paymentMethod, setPaymentMethod] = useState(null); // 'bank' | 'cliq' | 'cod' | 'zaincash' | 'orangemoney'
   const [proofImage, setProofImage] = useState(null);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [payErr, setPayErr] = useState("");
+
+  /* ---- stepper: cart(0) pay(1) review(2) done(3) ---- */
+  const stepIdx = step === "cart" ? 0 : step === "pay" ? 1 : step === "review" ? 2 : 3;
+  const stepLabels = ["السلة", "الدفع", "مراجعة", "تم!"];
+  const paymentMethodLabels = { bank: "تحويل بنكي", cliq: "CliQ", cod: "نقدًا عند التسليم", zaincash: "زين كاش", orangemoney: "أورنج موني" };
+  const miniSummary = (compact) => (
+    <div className="rounded-xl p-3 mb-4 flex items-center justify-between" style={{ background: "rgba(12,17,40,0.5)", border: "1px solid rgba(47,125,244,0.3)" }}>
+      <div className="flex items-center gap-2">
+        <Package size={15} color="#60a5fa" />
+        <span className="text-xs" style={{ color: "#c3cbe8" }}>{cart.reduce((n, c) => n + c.qty, 0)} {cart.reduce((n, c) => n + c.qty, 0) > 1 ? "منتجات" : "منتج"}</span>
+      </div>
+      {!compact && <span className="font-black text-sm" style={{ color: "#60a5fa" }}>{money(finalTotal)}</span>}
+    </div>
+  );
+  const Stepper = () => (
+    <div className="flex items-center gap-2 mb-4">
+      {stepLabels.map((lab, i) => (
+        <div key={lab} className="flex items-center gap-2 flex-1">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-black shrink-0 transition-all duration-300"
+            style={i <= stepIdx ? orangeBtn : { background: "rgba(2,14,36,0.9)", color: "#66708a", border: "1px solid rgba(47,125,244,0.22)" }}>
+            {i < stepIdx ? <Check size={14} /> : i + 1}
+          </div>
+          <span className="text-[11px] font-bold" style={{ color: i <= stepIdx ? "#f4f6fb" : "#66708a" }}>{lab}</span>
+          {i < stepLabels.length - 1 && <div className="flex-1 h-0.5 rounded" style={{ background: i < stepIdx ? "rgba(255,138,43,0.7)" : "rgba(47,125,244,0.16)" }} />}
+        </div>
+      ))}
+    </div>
+  );
 
   /* ---- delivery (server-validated; the fee shown here is only indicative) ---- */
   const shippingEnabled = shipping?.enabled && Array.isArray(shipping?.companies) && shipping.companies.some(c => c.enabled !== false);
@@ -1540,20 +1570,51 @@ function CartDrawer({ cart, changeQty, removeFromCart, total, onClose, session, 
       : (shippingEnabled && selCompanyId && selCity ? { companyId: selCompanyId, cityName: selCity } : null);
     const notes = deliveryNotes.trim().slice(0, 500);
     const deliveryPayload = basePayload ? { ...basePayload, notes } : null;
-    await onCheckout(finalTotal, appliedCoupon?.code, paymentMethod, proofImage, deliveryPayload);
+    try {
+      const result = await onCheckout(finalTotal, appliedCoupon?.code, paymentMethod, proofImage, deliveryPayload);
+      const created = result && (result.id ? result : (result.order || null));
+      setPlacedOrder(created);
+      setStep("done");
+    } catch (e) {
+      setPayErr(e && e.message ? e.message : "صار خطأ أثناء إرسال الطلب — حاول مرة ثانية");
+    }
     setPlacing(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(2,4,12,0.65)", backdropFilter: "blur(6px)" }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end" style={{ background: "rgba(2,4,12,0.65)", backdropFilter: "blur(6px)" }} onClick={step === "done" ? undefined : onClose}>
       <div className="w-full max-w-sm h-full p-5 overflow-y-auto" style={{ background: "linear-gradient(180deg,#0a1028 0%,#060917 100%)", borderLeft: "1px solid rgba(47,125,244,0.3)", boxShadow: "0 0 40px rgba(8,10,30,0.7)" }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-black text-lg flex items-center gap-2"><ShoppingCart size={18} color="#fbbf24" /> {step === "cart" ? "سلة المشتريات" : "الدفع"}</h2>
-          <button onClick={onClose}><X size={18} color="#c3cbe8" /></button>
+          <h2 className="font-black text-lg flex items-center gap-2"><ShoppingCart size={18} color="#fbbf24" /> {step === "cart" ? "سلة المشتريات" : step === "done" ? "تم استلام الطلب" : "إتمام الطلب"}</h2>
+          {step !== "done" ? <button onClick={onClose}><X size={18} color="#c3cbe8" /></button> : <button onClick={() => { setCartOpen && setCartOpen(false); onClose(); }} aria-label="إغلاق"><X size={18} color="#c3cbe8" /></button>}
         </div>
+        {step !== "done" && <Stepper />}
 
         {cart.length === 0 ? (
           <p className="text-sm text-center mt-10" style={{ color: "#c3cbe8" }}>السلة فارغة</p>
+        ) : step === "done" ? (
+          <>
+            <div className="flex flex-col items-center text-center py-8">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5" style={{ background: "rgba(45,212,191,0.12)", border: "2px solid rgba(45,212,191,0.5)", boxShadow: "0 0 30px rgba(45,212,191,0.35)" }}>
+                <CheckCircle2 size={38} color="#2dd4bf" />
+              </div>
+              <h3 className="font-black text-xl mb-2" style={{ color: "#f4f6fb" }}>تم استلام طلبك بنجاح!</h3>
+              <p className="text-xs mb-5" style={{ color: "#c3cbe8" }}>رح نراجع طلبك ونؤكد لك الدفع بأقرب وقت</p>
+              {placedOrder?.id && (
+                <div className="rounded-xl px-4 py-3 mb-5 text-xs font-black tracking-wider" style={{ background: "rgba(12,17,40,0.6)", border: "1px solid rgba(47,125,244,0.3)", color: "#60a5fa", direction: "ltr" }}>
+                  QW-{placedOrder.id.slice(0, 8).toUpperCase()}
+                </div>
+              )}
+              <div className="w-full rounded-xl p-4 text-right text-xs space-y-2" style={{ background: "rgba(12,17,40,0.45)", border: "1px solid rgba(47,125,244,0.22)", color: "#c3cbe8" }}>
+                <p className="flex items-start gap-2"><span className="font-black" style={{ color: "#fbbf24" }}>1.</span> نراجع إثبات الدفع ونتحقق من التحويل</p>
+                <p className="flex items-start gap-2"><span className="font-black" style={{ color: "#fbbf24" }}>2.</span> بتوصلك رسالة تأكيد ورح ننشط الأكواد أو نجهز طلبك</p>
+                <p className="flex items-start gap-2"><span className="font-black" style={{ color: "#fbbf24" }}>3.</span> تابع حالة طلبك من صفحة «طلباتي» بالموقع</p>
+              </div>
+              <button onClick={() => onClose()} className="w-full py-3 rounded-xl font-bold text-sm mt-6 flex items-center justify-center gap-2 qx-btn qx-btn-primary">
+                <ShoppingBag size={15} /> متابعة التسوق
+              </button>
+            </div>
+          </>
         ) : step === "cart" ? (
           <>
             <div className="space-y-3 mb-6">
@@ -1678,7 +1739,11 @@ function CartDrawer({ cart, changeQty, removeFromCart, total, onClose, session, 
           </>
         ) : (
           <>
-            <button onClick={() => setStep("cart")} className="flex items-center gap-1 text-xs font-bold mb-4" style={{ color: "#c3cbe8" }}><ChevronRight size={14} style={{ transform: "scaleX(-1)" }} /> رجوع للسلة</button>
+            {miniSummary(step === "pay")}
+
+            {step === "pay" && (
+              <>
+            <button onClick={() => setStep("cart")} className="flex items-center gap-1 text-xs font-bold mb-4 px-2.5 py-1.5 rounded-lg transition-all duration-150 hover:opacity-80" style={{ color: "#60a5fa", background: "rgba(47,125,244,0.08)", border: "1px solid rgba(47,125,244,0.25)" }}><ChevronRight size={14} style={{ transform: "scaleX(-1)" }} /> رجوع للسلة</button>
 
             <div className="flex justify-between items-center mb-4">
               <span className="font-bold text-sm">{paymentMethod === "cod" ? "المبلغ المطلوب دفعه عند التسليم" : "المبلغ المطلوب تحويله"}</span>
@@ -1686,29 +1751,72 @@ function CartDrawer({ cart, changeQty, removeFromCart, total, onClose, session, 
             </div>
 
             <p className="text-xs font-bold mb-2" style={{ color: "#c3cbe8" }}>اختر طريقة الدفع</p>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <button onClick={() => setPaymentMethod("bank")} className="py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
-                style={paymentMethod === "bank" ? orangeBtn : { background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
-                <CreditCard size={13} /> تحويل بنكي
-              </button>
-              <button onClick={() => setPaymentMethod("cliq")} className="py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
-                style={paymentMethod === "cliq" ? orangeBtn : { background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
-                <Smartphone size={13} /> CliQ
-              </button>
-              <button onClick={() => setPaymentMethod("zaincash")} className="py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
-                style={paymentMethod === "zaincash" ? orangeBtn : { background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
-                <Smartphone size={13} /> زين كاش
-              </button>
-              <button onClick={() => setPaymentMethod("orangemoney")} className="py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
-                style={paymentMethod === "orangemoney" ? orangeBtn : { background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
-                <Smartphone size={13} /> أورنج موني
-              </button>
+            <div className="space-y-2 mb-3">
+              {[
+                { key: "bank", icon: CreditCard, label: "تحويل بنكي", hint: "تحويل مباشر لحساب المتجر", Icon: CreditCard },
+                { key: "cliq", icon: Smartphone, label: "CliQ", hint: "CliQ فوري" },
+                { key: "zaincash", icon: Smartphone, label: "زين كاش", hint: "دفع عبر زين كاش" },
+                { key: "orangemoney", icon: Smartphone, label: "أورنج موني", hint: "دفع عبر أورنج موني" },
+              ].map(m => (
+                <button key={m.key} onClick={() => setPaymentMethod(m.key)} className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-right transition-all duration-150"
+                  style={paymentMethod === m.key ? { ...orangeBtn, boxShadow: "0 0 16px rgba(255,138,43,0.35)" } : { background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
+                  <m.icon size={17} color={paymentMethod === m.key ? "#fff" : "#60a5fa"} />
+                  <span className="flex-1">
+                    <span className="block text-xs font-black">{m.label}</span>
+                    <span className="block text-[10px]" style={{ color: paymentMethod === m.key ? "rgba(255,255,255,0.85)" : "#66708a" }}>{m.hint}</span>
+                  </span>
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: paymentMethod === m.key ? "#fff" : "rgba(47,125,244,0.15)", border: paymentMethod === m.key ? "2px solid #ff8a2b" : "1px solid rgba(47,125,244,0.35)" }}>
+                    {paymentMethod === m.key ? <Check size={12} color="#ff8a2b" /> : null}
+                  </span>
+                </button>
+              ))}
+              {paymentInfo.codEnabled && (
+                <button onClick={() => setPaymentMethod("cod")} className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-right transition-all duration-150"
+                  style={paymentMethod === "cod" ? { ...orangeBtn, boxShadow: "0 0 16px rgba(255,138,43,0.35)" } : { background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
+                  <Truck size={17} color={paymentMethod === "cod" ? "#fff" : "#60a5fa"} />
+                  <span className="flex-1">
+                    <span className="block text-xs font-black">نقدًا عند التسليم</span>
+                    <span className="block text-[10px]" style={{ color: paymentMethod === "cod" ? "rgba(255,255,255,0.85)" : "#66708a" }}>ادفع للمندوب عند استلام طلبك</span>
+                  </span>
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: paymentMethod === "cod" ? "#fff" : "rgba(47,125,244,0.15)", border: paymentMethod === "cod" ? "2px solid #ff8a2b" : "1px solid rgba(47,125,244,0.35)" }}>
+                    {paymentMethod === "cod" ? <Check size={12} color="#ff8a2b" /> : null}
+                  </span>
+                </button>
+              )}
             </div>
-            {paymentInfo.codEnabled && (
-              <button onClick={() => setPaymentMethod("cod")} className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 mb-3"
-                style={paymentMethod === "cod" ? orangeBtn : { background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
-                <Truck size={13} /> نقدًا عند التسليم
-              </button>
+              </>
+            )}
+
+            {step === "review" && (
+              <>
+                <p className="text-sm font-black mb-3" style={{ color: "#f4f6fb" }}>راجع طلبك قبل التأكيد</p>
+                <div className="rounded-xl p-3.5 mb-3 text-xs space-y-2" style={{ background: "rgba(12,17,40,0.45)", border: "1px solid rgba(47,125,244,0.22)" }}>
+                  {cart.map(c => (
+                    <div key={c.pid} className="flex justify-between items-center gap-2">
+                      <span style={{ color: "#c3cbe8" }}>{c.name} × {c.qty}</span>
+                      <span className="font-bold" style={{ color: "#60a5fa" }}>{money(c.price * c.qty)}</span>
+                    </div>
+                  ))}
+                  {appliedCoupon && <div className="flex justify-between items-center" style={{ color: "#2dd4bf" }}><span>كوبون {appliedCoupon.code}</span><span className="font-bold">- {money(couponDiscount)}</span></div>}
+                  {autoDiscountPercent > 0 && <div className="flex justify-between items-center" style={{ color: "#2dd4bf" }}><span>خصم تلقائي {autoDiscountPercent}%</span><span className="font-bold">- {money(autoDiscount)}</span></div>}
+                  {deliveryFee > 0 && <div className="flex justify-between items-center" style={{ color: "#fbbf24" }}><span>التوصيل ({selCompany?.name} — {selCity})</span><span className="font-bold">+ {money(deliveryFee)}</span></div>}
+                  {deliveryMode === "pickup" && <div className="flex justify-between items-center" style={{ color: "#2dd4bf" }}><span>الاستلام من المتجر</span><span className="font-bold">مجاني</span></div>}
+                  <div className="flex justify-between items-center pt-2 mt-2" style={{ borderTop: "1px solid rgba(47,125,244,0.25)" }}>
+                    <span className="font-black text-sm">الإجمالي</span>
+                    <span className="font-black text-sm" style={{ color: "#60a5fa" }}>{money(finalTotal)}</span>
+                  </div>
+                </div>
+                <div className="rounded-xl p-3 mb-3 text-xs" style={{ background: "rgba(12,17,40,0.45)", border: "1px solid rgba(47,125,244,0.22)" }}>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span style={{ color: "#c3cbe8" }}>طريقة الدفع</span>
+                    <span className="font-bold">{paymentMethodLabels[paymentMethod] || paymentMethod}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span style={{ color: "#c3cbe8" }}>الاستلام</span>
+                    <span className="font-bold">{deliveryMode === "pickup" ? "من المتجر — مجاني" : selCity ? `${selCompany?.name} — ${selCity}` : "—"}</span>
+                  </div>
+                </div>
+              </>
             )}
 
             {paymentMethod && paymentMethod !== "cod" && (
@@ -1774,13 +1882,48 @@ function CartDrawer({ cart, changeQty, removeFromCart, total, onClose, session, 
               </div>
             )}
 
+            {step === "review" && proofImage && (
+              <div className="mb-4">
+                <p className="text-xs font-bold mb-2" style={{ color: "#c3cbe8" }}>إثبات التحويل المرفق</p>
+                <img src={proofImage} alt="" className="max-h-36 rounded-lg" loading="lazy" />
+              </div>
+            )}
+
             {payErr && <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: "#f87171" }}><AlertTriangle size={13} /> {payErr}</p>}
 
-            <button disabled={placing} onClick={submitOrder}
+            {step === "pay" && (
+              <>
+            <button disabled={placing} onClick={() => {
+              if (!paymentMethod) { setPayErr("اختر طريقة الدفع أولًا"); return; }
+              if (paymentMethod !== "cod" && !proofImage) { setPayErr("لازم ترفق صورة إثبات التحويل قبل المتابعة"); return; }
+              if (shippingEnabled && availableCompanies.length > 0 && paymentMethod === "cod" && deliveryMode === "delivery" && (!selCompanyId || !selCity)) {
+                setPayErr("اختر شركة التوصيل والمدينة أو اختر الاستلام من المتجر"); return;
+              }
+              setPayErr("");
+              setStep("review");
+            }}
               className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 qx-btn qx-btn-primary">
-              {placing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={15} />} {paymentMethod === "cod" ? "تأكيد الطلب" : "إرسال الطلب مع الإثبات"}
+              <ArrowRight size={15} style={{ transform: "scaleX(-1)" }} /> مراجعة الطلب
             </button>
-            <p className="text-[11px] text-center mt-2" style={{ color: "#c3cbe8" }}>{paymentMethod === "cod" ? "رح نتواصل معك لتأكيد الطلب وموعد التسليم" : "رح نراجع الإثبات ونأكد وصول الدفع بأقرب وقت"}</p>
+              </>
+            )}
+
+            {step === "review" && (
+              <>
+            {payErr && <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: "#f87171" }}><AlertTriangle size={13} /> {payErr}</p>}
+            <div className="flex gap-2 mb-3">
+              <button onClick={() => setStep("pay")} className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5"
+                style={{ background: "rgba(12,17,40,0.6)", color: "#c3cbe8", border: "1px solid rgba(47,125,244,0.28)" }}>
+                <ChevronRight size={14} style={{ transform: "scaleX(-1)" }} /> رجوع
+              </button>
+              <button disabled={placing} onClick={submitOrder}
+                className="flex-[2] py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 qx-btn qx-btn-primary">
+                {placing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={15} />} تأكيد الطلب وإرساله
+              </button>
+            </div>
+            <p className="text-[11px] text-center" style={{ color: "#c3cbe8" }}>{paymentMethod === "cod" ? "رح نتواصل معك لتأكيد الطلب وموعد التسليم" : "رح نراجع الإثبات ونؤكد وصول الدفع بأقرب وقت"}</p>
+              </>
+            )}
           </>
         )}
       </div>
@@ -1924,7 +2067,7 @@ function StorePage({ games, prices, setTab, addToCart, session, submitQuickOrder
         <span className="qx-orb" style={{ width: 280, height: 280, bottom: "-20%", left: "4%", background: "rgba(0,48,144,0.4)", animationDelay: "5s" }} />
         <div className="px-5 py-12 sm:px-10 sm:py-14 relative">
           <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
-            <img src="/QWADER_STOR_logo_under_2MB.jpg" alt="QWADER STORE" className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl object-contain qx-reveal" style={{ filter: "drop-shadow(0 0 40px rgba(47,125,244,0.45))" }} loading="eager" />
+            <img src="/manus-storage/qwader-logo_88ca51bf.png" alt="QWADER STORE" className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl object-contain qx-reveal" style={{ filter: "drop-shadow(0 0 40px rgba(47,125,244,0.45))" }} loading="eager" />
             <div className="text-center sm:text-right">
               <p className="qx-chip qx-chip--active inline-flex items-center gap-2 mb-4 px-4 py-1.5 text-[11px] font-black">
                 <Gamepad2 size={13} /> المتجر الرقمي الأول لحسابات وألعاب الألعاب
@@ -3233,13 +3376,9 @@ function AdminPanel({ games, setGames, prices, setPrices, faq, banners, testimon
   // the owner's account carries real financial data (payment info, everyone's
   // orders) so 2FA isn't optional for that specific role — staff can still
   // use the dashboard without it.
-  if (isOwner && !session.twoFAEnabled) {
-    return <OwnerTwoFAGate updateCurrentUser={updateCurrentUser} onLogout={onLogout} />;
-  }
-
-  // orders / messages / customers / activity log now all live on the real
-  // backend, fetched here once and shared down to the tabs that need them,
-  // with a light poll on orders so new orders actually show up live.
+  // NOTE: all data hooks are declared above the early return below — calling
+  // useState AFTER an early `return` made the hook order unstable between
+  // renders (React error #310), so they must all live here.
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
   const [adminCustomers, setAdminCustomers] = useState([]);
@@ -3250,6 +3389,7 @@ function AdminPanel({ games, setGames, prices, setPrices, faq, banners, testimon
   const [refundQueue, setRefundQueue] = useState([]);
   const [chatThreads, setChatThreads] = useState([]);
   const [loadingAdminData, setLoadingAdminData] = useState(true);
+
   // ---------- تبويب الإعدادات (تفاصيل الاتصال + بريد الإشعارات) ----------
   const [settingsContacts, setSettingsContacts] = useState(DEFAULT_SOCIAL_LINKS);
   const [settingsEmail, setSettingsEmail] = useState({ user: "", configured: false, passStored: false });
@@ -3257,7 +3397,7 @@ function AdminPanel({ games, setGames, prices, setPrices, faq, banners, testimon
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsErr, setSettingsErr] = useState("");
   const [branding, setBranding] = useState(_branding || DEFAULT_BRANDING);
-  useEffect(() => { if (_branding) setBranding(_branding); }, [_branding]);
+  useEffect(() => { if (_branding) setBranding(_branding); }, [_branding]); // keep in sync when the parent updates the branding prop
   const [logoUploadErr, setLogoUploadErr] = useState("");
   const logoInputRef = useRef(null);
   // ---------- تبويب الإعدادات: صفحة من نحن ----------
@@ -3783,7 +3923,7 @@ function ChatsAdmin({ session, openUserId, onOpened, quickReplies, isOwner, canE
   const startWith = async (customer) => {
     setStarting(true); setStartErr("");
     try {
-      const { threadId } = await api.post("/api/admin/chats-start", { userId: customer.id, text: `مرحبا ${customer.name}، معك فريق QWADERGAME 👋` });
+      const { threadId } = await api.post("/api/admin/chats-start", { userId: customer.id, text: `مرحبا ${customer.name}، معك فريق QWADER STORE 👋` });
       setShowStart(false);
       await loadThreads();
       setActiveId(threadId);

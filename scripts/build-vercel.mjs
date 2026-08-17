@@ -1,148 +1,48 @@
+/**
+ * Build step for Vercel deployment.
+ *
+ * 1. `vite build`  → client bundle into dist/public
+ * 2. `esbuild`     → server/_core/vercelEntry.ts into api/vercel-handler.js
+ *    (root-level api/, NOT dist/api/ — Vercel's zero-config function
+ *     detection always scans the repo's root api/ directory, regardless of
+ *     outputDirectory. Emitting straight there, fully bundled, means Vercel
+ *     deploys this exact self-contained file as-is instead of re-compiling
+ *     an un-bundled source file itself. --bundle inlines every local
+ *     relative import (./vercel, ./oauth, ../routers, ../db, ...) into this
+ *     one file; --packages=external keeps real npm packages resolved from
+ *     Vercel's own node_modules at runtime.)
+ */
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(fileURLToPath(import.meta.url), "..", "..");
-const serverDir = path.join(root, "dist", "server");
 
-function run(command) {
-  console.log(`\n>>> ${command}\n`);
-  execSync(command, {
-    cwd: root,
-    stdio: "inherit",
-  });
-}
+execSync("vite build", { cwd: root, stdio: "inherit" });
 
-console.log("========== QWADER STORE VERCEL BUILD ==========");
-
-// 1. CLIENT
-console.log("\n========== 1. VITE BUILD ==========");
-run("vite build");
-
-// 2. VERCEL HANDLER
-console.log("\n========== 2. VERCEL HANDLER ==========");
-
+// Emit the bundled, self-contained function at the project root's api/
+// directory — this is what Vercel actually deploys as the Serverless
+// Function for every /api/* route.
 fs.mkdirSync(path.join(root, "api"), { recursive: true });
-
-run(
-  "esbuild server/_core/vercelEntry.ts --platform=node --bundle --format=esm --outfile=api/vercel-handler.js --packages=external"
+execSync(
+  "esbuild server/_core/vercelEntry.ts --platform=node --packages=external --bundle --format=esm --outfile=api/vercel-handler.js",
+  { cwd: root, stdio: "inherit" }
 );
 
-// 3. CLEAN SERVER
-console.log("\n========== 3. CLEAN SERVER ==========");
-
-fs.rmSync(serverDir, {
-  recursive: true,
-  force: true,
-});
-
-fs.mkdirSync(serverDir, {
-  recursive: true,
-});
-
-// 4. COMPILE LEGACY SERVER
-console.log("\n========== 4. COMPILE LEGACY SERVER ==========");
-
-run(
-  'esbuild "server/**/*.ts" "server/**/*.js" --platform=node --packages=external --format=esm --outdir=dist/server'
+// Compile the whole server tree (TS + JS) to dist/server/ so that legacy
+// action files — plain .js loaded by dynamic import() but pulling in TS
+// modules like ../storage.ts — resolve to real JS at runtime. The handler
+// bundle keeps packages external, so everything in dist/server is resolved
+// by Vercel's own node_modules at invocation time.
+fs.rmSync(path.join(root, "dist", "server"), { recursive: true, force: true });
+execSync(
+  "esbuild \"server/**/*.ts\" \"server/**/*.js\" --platform=node --packages=external --format=esm --outdir=dist/server",
+  { cwd: root, stdio: "inherit" }
 );
 
-// 5. FIX EXTENSIONS
-console.log("\n========== 5. FIX EXTENSIONS ==========");
+// Rewrite relative import specifiers in dist/server/ so Node ESM can resolve
+// them at runtime (.ts → .js, extensionless → .js).
+execSync("node scripts/fix-extensions.mjs", { cwd: root, stdio: "inherit" });
 
-run("node scripts/fix-extensions.mjs");
-
-// 6. INSTALL REQUIRED RUNTIME DEPENDENCIES
-console.log("\n========== 6. INSTALL RUNTIME DEPENDENCIES ==========");
-
-const runtimePackages = [
-  "jsonwebtoken@9.0.3",
-  "bcryptjs@3.0.3",
-  "nodemailer@7.0.6",
-  "jose@6.1.0",
-];
-
-const runtimePackageJson = {
-  name: "qwader-server-runtime",
-  private: true,
-  type: "module",
-  dependencies: Object.fromEntries(
-    runtimePackages.map((pkg) => {
-      const [name, version] = pkg.split("@");
-      return [name, version];
-    })
-  ),
-};
-
-fs.writeFileSync(
-  path.join(serverDir, "package.json"),
-  JSON.stringify(runtimePackageJson, null, 2)
-);
-
-run(
-  "npm install --prefix dist/server --omit=dev --ignore-scripts --no-audit --no-fund"
-);
-
-// 7. VERIFY DEPENDENCIES
-console.log("\n========== 7. VERIFY DEPENDENCIES ==========");
-
-const required = [
-  "jsonwebtoken",
-  "bcryptjs",
-  "nodemailer",
-  "jose",
-  "jws",
-  "jwa",
-];
-
-for (const pkg of required) {
-  const pkgPath = path.join(
-    serverDir,
-    "node_modules",
-    pkg,
-    "package.json"
-  );
-
-  if (!fs.existsSync(pkgPath)) {
-    throw new Error(`❌ Missing runtime dependency: ${pkg}`);
-  }
-
-  const info = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-  console.log(`✅ ${pkg} ${info.version || ""}`);
-}
-
-// 8. VERIFY LEGACY FILES
-console.log("\n========== 8. CHECK LEGACY FILES ==========");
-
-const legacyFiles = [
-  "legacy/auth.js",
-  "legacy/auth.action.js",
-  "legacy/mailer.js",
-];
-
-for (const file of legacyFiles) {
-  const full = path.join(serverDir, file);
-
-  if (!fs.existsSync(full)) {
-    throw new Error(`❌ Missing legacy file: ${file}`);
-  }
-
-  console.log(`✅ ${file}`);
-}
-
-// 9. VERIFY IMPORTS
-console.log("\n========== 9. CHECK RUNTIME IMPORTS ==========");
-
-run(
-  'grep -R -nE \'from "(jsonwebtoken|bcryptjs|nodemailer|jose)"\' dist/server/legacy || true'
-);
-
-// 10. SIZE
-console.log("\n========== 10. SERVER SIZE ==========");
-
-run("du -sh dist/server");
-
-console.log("\n==========================================");
-console.log("✅ QWADER VERCEL BUILD COMPLETED");
-console.log("==========================================");
+console.log("Vercel build complete: dist/public + api/vercel-handler.js + dist/server");

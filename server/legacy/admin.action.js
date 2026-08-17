@@ -43,7 +43,6 @@ export const PERMISSION_KEYS = [
 export default async function handler(req, res) {
   const parts = pathAfter(req, "/api/admin/");
   const [section, id] = parts;
-
   try {
     const auth = await getAuth(req);
     if (!isStaff(auth)) return res.status(403).json({ error: "غير مصرّح" });

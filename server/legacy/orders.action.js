@@ -159,6 +159,11 @@ async function createOrder(req, res, auth) {
   await logActivity(auth.user.id, "order_created", `طلب جديد: ${o.id.slice(0, 8)} بقيمة ${recalc.total} د.أ`, { orderId: o.id, total: recalc.total });
   await notifyUser(s, auth.user.id, "order", "تم استلام طلبك", proofUrl ? "طلبك وصلنا مع إثبات الدفع — رح نراجعه ونأكد الدفع قريبًا" : "طلبك وصلنا — بانتظار تأكيد الدفع", { type: "order", id: o.id });
 
+  // owner email notification when sending is configured (never silently fails the order)
+  if (emailSendingConfigured()) {
+    notifyOwnerNewOrder(s, o, auth.user, recalc, proofUrl).catch((e) => console.warn("[orders] owner notify failed:", (e.message || "").slice(0, 200)));
+  }
+
   // email receipt when sending is configured
   if (emailSendingConfigured() && auth.user.email) {
     const summary = recalc.snapshot.map(x => `• ${x.name} × ${x.qty} — ${x.price} د.أ`).join("<br/>");
@@ -215,6 +220,34 @@ async function sendPickupCompleteEmail(s, o) {
     <p style="color:#f4f6fb; font-size:14px;">سجلّينا إنك استلمت طلبك من المتجر بنجاح — شكراً لثقتك فينا!</p>
     <p style="color:#f4f6fb; font-size:14px;">اذا في أي مشكلة بالمنتج أو الكود، راسلنا على واتساب المتجر.</p>${foot}`;
   try { await sendEmail(email, subject, html); } catch (e) { console.warn("pickup email failed:", (e.message || "").slice(0, 200)); }
+}
+
+/* ---------- owner: email every admin account when a new order arrives ---------- */
+async function notifyOwnerNewOrder(s, o, customer, recalc, proofUrl) {
+  // admin recipients: every owner/staff row that has an email address
+  const admins = await s`select id, email from users where role in ('owner', 'staff') and email is not null and email != ''`;
+  if (admins.length === 0) return;
+  const short = o.id.slice(0, 8).toUpperCase();
+  const summary = (recalc.snapshot || []).map(x => `• ${x.name} × ${x.qty} — ${x.price} د.أ`).join("<br/>");
+  const subject = `🛒 طلب جديد #${short} — ${customer.name} — ${recalc.total} د.أ`;
+  const html = `<div dir="rtl" style="font-family: system-ui, sans-serif; max-width: 460px; margin: 0 auto; padding: 24px; background: #0a0f20; color: #f4f6fb; border-radius: 16px;">
+    <h2 style="color:#29e0c8; margin:0 0 12px;">وصل طلب جديد!</h2>
+    <p style="color:#c7cee3; font-size:14px;">رقم الطلب: <b>${short}</b></p>
+    <p style="color:#f4f6fb; font-size:14px;">الزبون: <b>${customer.name}</b> — ${customer.phone || "بدون رقم"}</p>
+    <div style="background:#131c38; border-radius:12px; padding:14px; margin:12px 0; font-size:13px; line-height:1.9;">${summary}</div>
+    ${recalc.deliveryFee > 0 ? `<p style="color:#c7cee3; font-size:13px;">التوصيل: ${recalc.deliveryCompany || ""} — ${recalc.deliveryCity || ""} (${recalc.deliveryFee} د.أ)</p>` : recalc.deliveryCity === "استلام من المتجر" ? `<p style="color:#c7cee3; font-size:13px;">الاستلام: استلام من المتجر (مجاني)</p>` : ""}
+    ${recalc.deliveryNotes ? `<p style="color:#c7cee3; font-size:13px;">ملاحظات التوصيل: ${recalc.deliveryNotes}</p>` : ""}
+    <p style="color:#fbbf24; font-size:15px; font-weight:bold;">الإجمالي: ${recalc.total} د.أ</p>
+    ${proofUrl ? `<p style="color:#29e0c8; font-size:13px;">⚡ الزبون أرفق إثبات دفع — راجعه من لوحة الإدارة</p>` : `<p style="color:#c7cee3; font-size:13px;">انتظار إثبات الدفع أو الدفع عند التسليم.</p>`}
+    <p style="color:#8b96b8; font-size:12px;">افتح الطلب من لوحة الإدارة ← الطلبات.</p>
+  </div>`;
+  // email every admin + in-app notification for the first owner row
+  for (const admin of admins) {
+    try { await sendEmail(admin.email, subject, html); } catch (e) { console.warn("owner order email failed:", (e.message || "").slice(0, 200)); }
+  }
+  try {
+    await notifyUser(s, admins[0].id, "order", `طلب جديد #${short}`, `${customer.name} — ${recalc.total} د.أ${proofUrl ? " (مع إثبات دفع)" : ""}`, { type: "order", id: o.id });
+  } catch (e) { console.warn("owner in-app notify failed:", (e.message || "").slice(0, 200)); }
 }
 
 /* ---------- staff: email the customer on key status transitions ---------- */

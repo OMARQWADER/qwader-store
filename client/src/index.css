@@ -1209,6 +1209,25 @@ body {
 .qx-nav-link:hover { color: rgb(var(--qx-txt)); background: rgba(47, 125, 244, 0.1); }
 .qx-nav-link--active { color: rgb(var(--qx-accent-bright)); background: rgba(47, 125, 244, 0.12); }
 
+/* ---------- Add-to-cart bump animation ---------- */
+@keyframes qx-cart-bump {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(1.32) rotate(-6deg); }
+  55%  { transform: scale(0.92) rotate(3deg); }
+  80%  { transform: scale(1.08); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+@keyframes qx-badge-pop {
+  0%   { transform: scale(0.4); opacity: 0.6; }
+  60%  { transform: scale(1.35); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.qx-cart-bump { animation: qx-cart-bump 420ms var(--qx-ease, cubic-bezier(0.23, 1, 0.32, 1)); }
+.qx-badge-pop { animation: qx-badge-pop 360ms var(--qx-ease, cubic-bezier(0.23, 1, 0.32, 1)); }
+@media (prefers-reduced-motion: reduce) {
+  .qx-cart-bump, .qx-badge-pop { animation: none; }
+}
+
 /* ---------- Hero ---------- */
 .qx-hero {
   position: relative;

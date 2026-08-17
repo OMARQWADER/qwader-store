@@ -273,13 +273,26 @@ export async function applyDelivery(s, recalc, info) {
   };
 }
 
+/* ---------- Neon cold-start retry ----------
+   The Neon serverless pooler can fail the FIRST query after idle with
+   "TypeError: fetch failed". A single retry after a short pause recovers. */
+export async function retryDb(fn) {
+  try { return await fn(); } catch (e) {
+    const msg = String(e?.message || "");
+    const transient = msg.includes("fetch failed") || /connect|timeout/i.test(msg);
+    if (!transient) throw e;
+    await new Promise((r) => setTimeout(r, 3000));
+    return await fn(); // second failure propagates normally
+  }
+}
+
 /* ---------- in-app notifications ---------- */
 export async function notifyUser(s, userId, kind, title, body, ref) {
   if (!userId) return;
   try {
     await s`insert into notifications (user_id, kind, title, body, ref_type, ref_id)
             values (${userId}, ${kind}, ${title}, ${body}, ${ref?.type || null}, ${ref?.id || null})`;
-  } catch (e) { console.warn("notifyUser failed:", e.message); }
+  } catch (e) { console.warn("notifyUser failed:", (e.message || "").slice(0, 200)); }
 }
 
 /* ---------- storage: upload handling ----------

@@ -161,8 +161,8 @@ export default function PaymentMethods() {
   }, []);
 
   const whatsappNumber = socials.whatsapp || "0779538304";
-  const whatsappProofText = "مرحبًا QWADERGAME، أرسلت إثبات التحويل عبر الموقع وأرجو تأكيد الطلب. رقم طلبي: ";
-  const whatsappSupportText = "مرحبًا QWADERGAME، عندي استفسار بخصوص طرق الدفع.";
+  const whatsappProofText = "مرحبًا QWADER STORE، أرسلت إثبات التحويل عبر الموقع وأرجو تأكيد الطلب. رقم طلبي: ";
+  const whatsappSupportText = "مرحبًا QWADER STORE، عندي استفسار بخصوص طرق الدفع.";
 
   const info = paymentInfo || DEFAULT_PAYMENT_INFO;
   const hasBank = !!info.bankAccountName || !!info.bankAccountNumber || !!info.bankName;

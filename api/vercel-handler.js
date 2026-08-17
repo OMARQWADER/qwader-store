@@ -748,12 +748,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 function resolveLegacyModule(file) {
-  const dir = typeof import.meta.dirname === "string" ? import.meta.dirname : process.cwd();
-  const isBundleDir = dir.endsWith(`${path.sep}dist`) || dir.endsWith("/dist") || dir.endsWith(`${path.sep}api`) || dir.endsWith("/api");
-  const projectRoot = isBundleDir ? path.resolve(dir, "..") : path.resolve(dir, "..", "..");
+  const dir = import.meta.dirname;
+  const projectRoot = path.resolve(dir, "..", "..");
+  const source = path.join(projectRoot, "server", "legacy", `${file}.js`);
   const compiled = path.join(projectRoot, "dist", "server", "legacy", `${file}.js`);
+  if (process.env.NODE_ENV !== "production" && fs.existsSync(source)) {
+    return pathToFileURL(source).href;
+  }
   if (fs.existsSync(compiled)) return pathToFileURL(compiled).href;
-  return pathToFileURL(path.join(projectRoot, "server", "legacy", `${file}.js`)).href;
+  return pathToFileURL(source).href;
 }
 function legacyApiRouter() {
   const api = Router();
@@ -882,8 +885,7 @@ async function vercelHandler(req, res) {
     }
     if (!path2) path2 = "/";
     const queryString = req.url && req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
-    const fullPath = path2.startsWith("/api") ? path2 : `/api${path2}`;
-    req.url = fullPath + queryString;
+    req.url = path2 + queryString;
     const anyReq = req;
     if (!anyReq.originalUrl) anyReq.originalUrl = req.url;
     const app = await getVercelApp();

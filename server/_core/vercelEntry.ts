@@ -44,6 +44,9 @@ export default async function vercelHandler(
     const queryString = req.url && req.url.includes("?")
       ? req.url.slice(req.url.indexOf("?"))
       : "";
+    // The rewrite in vercel.json strips the leading "/api" segment before
+    // handing us `path`, but every route registered on `app` is mounted
+    // under "/api". Re-add it here so Express can actually match.
     const fullPath = path.startsWith("/api") ? path : `/api${path}`;
     req.url = fullPath + queryString;
     // `originalUrl` is not part of VercelRequest's type, but Express and our
