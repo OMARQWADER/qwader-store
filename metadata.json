@@ -1,0 +1,7 @@
+{
+  "name": "QWADER STORE",
+  "description": "متجر قويدر ستور الرقمي لبيع ألعاب وبطاقات واشتراكات PlayStation وSteam بأعلى معايير الفخامة والسرعة بالدينار الأردني والدولار.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
