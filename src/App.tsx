@@ -1,5 +1,6 @@
 import React, { useEffect, lazy, Suspense } from 'react';
 import { StoreProvider, useStore } from './context/StoreContext';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { CartDrawer } from './components/layout/CartDrawer';
@@ -7,11 +8,8 @@ import { MaintenanceScreen } from './components/common/MaintenanceScreen';
 import { TwoStepVerificationModal } from './components/common/TwoStepVerificationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 
-// HomeView loads eagerly since it's the landing page most visitors hit first.
 import { HomeView } from './views/HomeView';
 
-// Every other view is code-split: each becomes its own JS chunk that only
-// downloads when the user actually navigates to that route.
 const StoreView = lazy(() => import('./views/StoreView').then(m => ({ default: m.StoreView })));
 const ProductDetailView = lazy(() => import('./views/ProductDetailView').then(m => ({ default: m.ProductDetailView })));
 const CheckoutView = lazy(() => import('./views/CheckoutView').then(m => ({ default: m.CheckoutView })));
@@ -24,6 +22,8 @@ const PaymentMethodsView = lazy(() => import('./views/PaymentMethodsView').then(
 const AboutView = lazy(() => import('./views/AboutView').then(m => ({ default: m.AboutView })));
 const AdminDashboardView = lazy(() => import('./views/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
 const OrderTrackingView = lazy(() => import('./views/OrderTrackingView').then(m => ({ default: m.OrderTrackingView })));
+const LoginView = lazy(() => import('./views/LoginView').then(m => ({ default: m.LoginView })));
+const RegisterView = lazy(() => import('./views/RegisterView').then(m => ({ default: m.RegisterView })));
 
 import { MessageCircle, AlertTriangle } from 'lucide-react';
 
@@ -40,13 +40,11 @@ const AppContent: React.FC = () => {
     void completeAdminLoginFromLink();
   }, []);
 
-  // Scroll to top on route change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setIsCartOpen(false);
   }, [currentRoute, setIsCartOpen]);
 
-  // Check if store is in Maintenance Mode (Owner can still access)
   const isMaintenanceActive = state.settings.isMaintenanceMode && currentUser?.role !== 'owner';
 
   const handleWhatsApp = () => {
@@ -54,7 +52,6 @@ const AppContent: React.FC = () => {
     window.open(`https://wa.me/${state.settings.whatsappNumber.replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
   };
 
-  // Route Dispatcher
   const renderView = () => {
     if (isMaintenanceActive) {
       return <MaintenanceScreen />;
@@ -76,6 +73,10 @@ const AppContent: React.FC = () => {
     }
 
     switch (currentRoute) {
+      case '#login':
+        return <LoginView />;
+      case '#register':
+        return <RegisterView />;
       case '#track-order':
       case '#track':
         return <OrderTrackingView />;
@@ -116,7 +117,6 @@ const AppContent: React.FC = () => {
         language === 'ar' ? 'font-cairo' : 'font-sans'
       } selection:bg-purple-600 selection:text-white antialiased`}
     >
-      {/* Maintenance Mode Warning for Owner */}
       {state.settings.isMaintenanceMode && currentUser?.role === 'owner' && (
         <div className="bg-amber-500 text-slate-950 px-4 py-2 text-center text-xs font-black flex items-center justify-center gap-2 shadow-lg sticky top-0 z-50">
           <AlertTriangle className="w-4 h-4 text-slate-950" />
@@ -128,24 +128,13 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      {/* Main Navigation Bar */}
       <Navbar />
-
-      {/* Main Page Dynamic Content */}
       <main className="flex-1 w-full pt-4 pb-16">
         <Suspense fallback={<RouteLoadingFallback />}>{renderView()}</Suspense>
       </main>
-
-      {/* Slide-over Cart Drawer */}
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-
-      {/* Sensitive Action Two-Step Verification Modal */}
       <TwoStepVerificationModal />
-
-      {/* Global In-App Toast System */}
       <ToastContainer />
-
-      {/* Floating WhatsApp Action Button */}
       <button
         id="floating-whatsapp-btn"
         onClick={handleWhatsApp}
@@ -155,8 +144,6 @@ const AppContent: React.FC = () => {
       >
         <MessageCircle className="w-6 h-6 fill-current" />
       </button>
-
-      {/* Global Store Footer */}
       <Footer />
     </div>
   );
@@ -164,11 +151,12 @@ const AppContent: React.FC = () => {
 
 export function App() {
   return (
-    <StoreProvider>
-      <AppContent />
-    </StoreProvider>
+    <AuthProvider>
+      <StoreProvider>
+        <AppContent />
+      </StoreProvider>
+    </AuthProvider>
   );
 }
 
 export default App;
-
