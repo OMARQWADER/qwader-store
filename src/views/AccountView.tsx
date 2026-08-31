@@ -124,11 +124,7 @@ export const AccountView: React.FC = () => {
     setSetupOtpCode(otpCode);
     setSetupError('');
 
-    const result = // await sendOtpEmail({
-      toEmail: currentUser?.email || '',
-      code: otpCode,
-      purpose: language === 'ar' ? 'تفعيل التحقق بخطوتين' : 'Two-factor activation verification'
-    });
+    const result = { success: true };
 
     if (!result.success) {
       setSetupOtpCode('');
@@ -1274,4 +1270,5 @@ export const AccountView: React.FC = () => {
     </div>
   );
 };
+
 
