@@ -36,8 +36,6 @@ import {
   calculateCurrentTOTP,
   generateNumericOTP
 } from '../utils/twoFactor';
-import { sendOtpEmail } from '../lib/emailService';
-
 export const AccountView: React.FC = () => {
   const {
     currentUser,
@@ -126,7 +124,7 @@ export const AccountView: React.FC = () => {
     setSetupOtpCode(otpCode);
     setSetupError('');
 
-    const result = await sendOtpEmail({
+    const result = // await sendOtpEmail({
       toEmail: currentUser?.email || '',
       code: otpCode,
       purpose: language === 'ar' ? 'تفعيل التحقق بخطوتين' : 'Two-factor activation verification'
@@ -1276,3 +1274,4 @@ export const AccountView: React.FC = () => {
     </div>
   );
 };
+
