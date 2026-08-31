@@ -1,6 +1,6 @@
-import { neon } from "@neondatabase/serverless";
+const { neon } = require("@neondatabase/serverless");
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   const sql = neon(process.env.POSTGRES_URL);
   
   if (req.method === "GET") {
@@ -25,4 +25,4 @@ export default async function handler(req, res) {
       res.status(500).json({ error: error.message });
     }
   }
-}
+};
