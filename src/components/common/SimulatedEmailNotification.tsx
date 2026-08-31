@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Sparkles,
   ExternalLink,
-  Zap,
   Clock,
   Smartphone,
   MessageCircle
@@ -18,13 +17,10 @@ export const SimulatedEmailNotification: React.FC = () => {
   const {
     simulatedEmailMessage,
     clearSimulatedEmailMessage,
-    activeSensitiveChallenge,
-    verifySensitiveActionCode,
     language
   } = useStore();
 
   const [copied, setCopied] = useState(false);
-  const [autoFilled, setAutoFilled] = useState(false);
   const [progress, setProgress] = useState(100);
 
   // Auto-dismiss countdown progress
@@ -32,7 +28,6 @@ export const SimulatedEmailNotification: React.FC = () => {
     if (!simulatedEmailMessage) {
       setProgress(100);
       setCopied(false);
-      setAutoFilled(false);
       return;
     }
 
@@ -54,17 +49,9 @@ export const SimulatedEmailNotification: React.FC = () => {
   if (!simulatedEmailMessage) return null;
 
   const handleCopy = () => {
-    navigator.clipboard?.writeText(simulatedEmailMessage.code);
+    navigator.clipboard?.writeText('');
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
-  };
-
-  const handleAutoFillAndVerify = () => {
-    setAutoFilled(true);
-    // If the modal is active, verify code directly
-    if (activeSensitiveChallenge) {
-      verifySensitiveActionCode(simulatedEmailMessage.code);
-    }
   };
 
   return (
@@ -107,16 +94,16 @@ export const SimulatedEmailNotification: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs font-bold text-slate-200 truncate mt-0.5">
-                {language === 'ar' ? 'أمان متجر كوادر ستور' : 'Qwader Store Security'} &lt;security@qwaderstore.jo&gt;
+                {language === 'ar' ? 'أمان متجر قويدر ستور' : 'Qwader Store Security'} &lt;security@qwaderstore.jo&gt;
               </p>
             </div>
           </div>
 
           <button
+            title={language === 'ar' ? 'إغلاق الإشعار' : 'Close'}
             id="dismiss-email-notification-btn"
             onClick={clearSimulatedEmailMessage}
             className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
-            title={language === 'ar' ? 'إغلاق الإشعار' : 'Close'}
           >
             <X className="w-4 h-4" />
           </button>
@@ -140,23 +127,23 @@ export const SimulatedEmailNotification: React.FC = () => {
               : `Security verification request for: ${simulatedEmailMessage.actionNameEn}`}
           </p>
 
-          {/* 6-Digit Code Highlight */}
+          {/* Security Notice */}
           <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-purple-950/70 border border-purple-500/40 shadow-inner">
             <div>
               <span className="block text-[10px] text-purple-300 font-semibold">
-                {language === 'ar' ? 'رمز التحقق الأمني (OTP):' : 'Security OTP Code:'}
+                {language === 'ar' ? 'حالة الإرسال:' : 'Delivery status:'}
               </span>
-              <span className="font-mono text-2xl font-black text-amber-300 tracking-[0.25em] drop-shadow-[0_0_10px_rgba(245,158,11,0.4)]">
-                {simulatedEmailMessage.code}
+              <span className="block text-base font-bold text-emerald-300">
+                {language === 'ar' ? 'تم إرسال رمز التحقق إلى بريدك الإلكتروني.' : 'Verification code has been sent to your email.'}
               </span>
             </div>
 
             <div className="flex items-center gap-1.5">
               <button
+                title={language === 'ar' ? 'نسخ' : 'Copy'}
                 id="copy-simulated-code-btn"
                 onClick={handleCopy}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition-all active:scale-95"
-                title="Copy"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 <span className="text-[11px]">{copied ? (language === 'ar' ? 'تم النسخ' : 'Copied') : (language === 'ar' ? 'نسخ' : 'Copy')}</span>
@@ -165,26 +152,10 @@ export const SimulatedEmailNotification: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Actions Footer */}
-        <div className="flex items-center gap-2 pt-1">
-          <button
-            id="autofill-email-code-btn"
-            onClick={handleAutoFillAndVerify}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg shadow-purple-900/40 hover:scale-[1.02] active:scale-95 transition-all"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-            <span>
-              {language === 'ar'
-                ? 'تعبئة الرمز وتأكيد الإجراء فوراً'
-                : 'Autofill & Confirm Action'}
-            </span>
-          </button>
-        </div>
-
         <p className="text-[10px] text-slate-400 text-center">
           {language === 'ar'
-            ? '💡 صلاحية الرمز 5 دقائق. لا تشارك رمز الأمان مع أي شخص حفاظاً على سرية بياناتك.'
-            : '💡 Code valid for 5 minutes. Never share this code with anyone.'}
+            ? '💡 تم إرسال الرمز إلى بريدك الإلكتروني الرسمي فقط. لا تشارك أي رمز أمان مع أي شخص.'
+            : '💡 The code has been sent to your official email only. Never share any verification code with anyone.'}
         </p>
       </div>
     </aside>

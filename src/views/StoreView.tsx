@@ -125,7 +125,7 @@ export const StoreView: React.FC = () => {
             <span>{language === 'ar' ? 'الكتالوج الرقمي الشامل' : 'Full Digital Catalog'}</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-black text-slate-100 mb-2 font-cairo">
-            {language === 'ar' ? 'متجر كوادر الرقمي للألعاب والبطاقات' : 'QWADER Digital Store'}
+            {language === 'ar' ? 'متجر قويدر الرقمي للألعاب والبطاقات' : 'QWADER Digital Store'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
             {language === 'ar'

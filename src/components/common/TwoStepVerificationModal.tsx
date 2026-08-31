@@ -179,14 +179,6 @@ export const TwoStepVerificationModal: React.FC = () => {
     }, 350);
   };
 
-  const handleAutofillActiveCode = () => {
-    if (activeSensitiveChallenge?.code) {
-      const chars = activeSensitiveChallenge.code.split('');
-      setDigits(chars);
-      submitCode(activeSensitiveChallenge.code);
-    }
-  };
-
   const handleResend = (channel?: 'email' | 'sms' | 'whatsapp') => {
     if (resendCooldown > 0) return;
     const targetChannel = channel || selectedChannel;
@@ -324,7 +316,9 @@ export const TwoStepVerificationModal: React.FC = () => {
             {digits.map((digit, idx) => (
               <input
                 key={idx}
-                ref={(el) => (inputRefs.current[idx] = el)}
+                ref={(el) => {
+                  inputRefs.current[idx] = el;
+                }}
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -350,28 +344,6 @@ export const TwoStepVerificationModal: React.FC = () => {
               <span>{errorMsg}</span>
             </div>
           )}
-        </div>
-
-        {/* Quick Testing & Autofill Button */}
-        <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-[11px] text-slate-300">
-            <Zap className="w-4 h-4 text-amber-400" />
-            <span>
-              {language === 'ar'
-                ? 'وصلك رمز التحقق في الإشعار العلوي؟'
-                : 'Received the verification code in your notification?'}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            id="autofill-active-code-btn"
-            onClick={handleAutofillActiveCode}
-            className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-          >
-            <Zap className="w-3.5 h-3.5 fill-amber-300" />
-            <span>{language === 'ar' ? 'تعبئة الرمز تلقائياً' : 'Autofill Code'}</span>
-          </button>
         </div>
 
         {/* Action Buttons */}

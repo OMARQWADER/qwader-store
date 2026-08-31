@@ -1,0 +1,106 @@
+=== DEEP AUDIT REPORT ===
+Base URL: http://localhost:3000
+Started: 2026-08-30T14:54:17.041Z
+Finished: 2026-08-30T15:04:21.617Z
+
+--- SUMMARY ---
+Total Tests: 24
+Passed: 1
+Failed: 0
+Warnings: 23
+Critical: 0
+High: 0
+Medium: 4
+Low: 19
+Info: 1
+
+--- FINDINGS ---
+[INFO] (meta) Found /robots.txt | page: /robots.txt | User-agent: *
+Allow: /
+Disallow: /#admin
+Disallow: /#account
+Disallow: /api/
+
+Sitemap: https://qwaderstore.jo/sitemap.xml
+Host: https://qwaderstore.jo
+
+[INFO] (meta) Found /sitemap.xml | page: /sitemap.xml | <?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  <url>
+    <loc>https://qwaderstore.jo/</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://qwaderstore.jo/#home</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://qwaderstore.jo/#store</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://qwaderstore.jo/#payment-methods</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://qwaderstore.jo/#about</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://qwaderstore.jo/#support</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://qwaderstore.jo/#favorites</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://qwaderstore.jo/#compare</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.70</priority>
+  </url>
+</urlset>
+
+
+[LOW] (security) Missing security header: content-security-policy | page: http://localhost:3000 | Recommended for hardened production deployments.
+[LOW] (security) Missing security header: x-frame-options | page: http://localhost:3000 | Recommended for hardened production deployments.
+[LOW] (security) Missing security header: x-content-type-options | page: http://localhost:3000 | Recommended for hardened production deployments.
+[LOW] (security) Missing security header: referrer-policy | page: http://localhost:3000 | Recommended for hardened production deployments.
+[LOW] (security) Missing security header: permissions-policy | page: http://localhost:3000 | Recommended for hardened production deployments.
+[MEDIUM] (accessibility) Accessibility issue: duplicate-id | page: / | global-search-input
+[LOW] (security) Cookie "wa_lang_pref" configuration warning | page: / | not HttpOnly
+[LOW] (security) Cookie "wa_lang_pref" configuration warning | page: /sitemap.xml | not HttpOnly
+[LOW] (accessibility) Accessibility issue: button-no-accessible-name | page: /schemas/sitemap/0.9 | <button class="p-1 rounded bg-slate-800 text-slate-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 2
+[LOW] (accessibility) Accessibility issue: button-no-accessible-name | page: /schemas/sitemap/0.9 | <button class="p-1 rounded bg-slate-800 text-slate-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 2
+[LOW] (accessibility) Accessibility issue: button-no-accessible-name | page: /schemas/sitemap/0.9 | <button class="p-1 rounded bg-slate-800 text-slate-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 2
+[MEDIUM] (accessibility) Accessibility issue: duplicate-id | page: /schemas/sitemap/0.9 | global-search-input
+[LOW] (security) Cookie "wa_lang_pref" configuration warning | page: /schemas/sitemap/0.9 | not HttpOnly
+[MEDIUM] (accessibility) Accessibility issue: duplicate-id | page: /2001/XMLSchema-instance | global-search-input
+[LOW] (security) Cookie "wa_lang_pref" configuration warning | page: /2001/XMLSchema-instance | not HttpOnly
+[MEDIUM] (accessibility) Accessibility issue: duplicate-id | page: /schemas/sitemap/0.9/sitemap.xsd | global-search-input
+[LOW] (security) Cookie "wa_lang_pref" configuration warning | page: /schemas/sitemap/0.9/sitemap.xsd | not HttpOnly
+[INFO] (admin) Admin authenticated audit skipped | page:  | Set ADMIN_EMAIL and ADMIN_PASSWORD in .env.test to enable this section.
+[LOW] (responsive) Horizontal overflow at tablet-768x1024 | page: / | /
+[LOW] (responsive) Horizontal overflow at tablet-768x1024 | page: /schemas/sitemap/0.9 | /schemas/sitemap/0.9
+[LOW] (responsive) Horizontal overflow at tablet-768x1024 | page: /2001/XMLSchema-instance | /2001/XMLSchema-instance
+[LOW] (responsive) Horizontal overflow at tablet-768x1024 | page: /schemas/sitemap/0.9/sitemap.xsd | /schemas/sitemap/0.9/sitemap.xsd
+[LOW] (responsive) Horizontal overflow at mobile-390x844 | page: /sitemap.xml | /sitemap.xml
+[LOW] (responsive) Horizontal overflow at mobile-360x800 | page: /sitemap.xml | /sitemap.xml

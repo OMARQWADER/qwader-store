@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1f2937"/>
+      <stop offset="100%" stop-color="#7c2d12"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <circle cx="900" cy="180" r="180" fill="#fb7185" opacity="0.22"/>
+  <circle cx="220" cy="520" r="200" fill="#f59e0b" opacity="0.18"/>
+  <rect x="160" y="150" width="400" height="430" rx="26" fill="#111827" opacity="0.78"/>
+  <path d="M245 420c60-120 180-150 290-150 25 0 50 3 74 9v150H245z" fill="#f97316" opacity="0.85"/>
+  <rect x="610" y="200" width="310" height="220" rx="28" fill="#111827" opacity="0.8"/>
+  <text x="650" y="268" font-size="46" font-family="Arial, sans-serif" font-weight="700" fill="#f8fafc">WUKONG</text>
+  <text x="650" y="330" font-size="34" font-family="Arial, sans-serif" font-weight="600" fill="#fbbf24">UE5</text>
+  <text x="650" y="380" font-size="22" font-family="Arial, sans-serif" fill="#e2e8f0">MYTHIC ACTION RPG</text>
+</svg>

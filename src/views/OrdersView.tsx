@@ -85,7 +85,7 @@ export const OrdersView: React.FC = () => {
 
   const handleWhatsAppInquiry = (order: Order) => {
     const text = encodeURIComponent(
-      `مرحباً متجر كوادر ستور 🎮\nأستفسر عن طلبي رقم: ${order.orderNumber}\nباسم: ${order.customerName}`
+      `مرحباً متجر قويدر ستور 🎮\nأستفسر عن طلبي رقم: ${order.orderNumber}\nباسم: ${order.customerName}`
     );
     window.open(`https://wa.me/${state.settings.whatsappNumber.replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
   };

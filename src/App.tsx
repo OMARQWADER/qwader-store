@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
@@ -7,31 +7,47 @@ import { MaintenanceScreen } from './components/common/MaintenanceScreen';
 import { TwoStepVerificationModal } from './components/common/TwoStepVerificationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 
+// HomeView loads eagerly since it's the landing page most visitors hit first.
 import { HomeView } from './views/HomeView';
-import { StoreView } from './views/StoreView';
-import { ProductDetailView } from './views/ProductDetailView';
-import { CheckoutView } from './views/CheckoutView';
-import { OrdersView } from './views/OrdersView';
-import { FavoritesView } from './views/FavoritesView';
-import { CompareView } from './views/CompareView';
-import { AccountView } from './views/AccountView';
-import { SupportView } from './views/SupportView';
-import { PaymentMethodsView } from './views/PaymentMethodsView';
-import { AboutView } from './views/AboutView';
-import { AdminDashboardView } from './views/AdminDashboardView';
-import { OrderTrackingView } from './views/OrderTrackingView';
+
+// Every other view is code-split: each becomes its own JS chunk that only
+// downloads when the user actually navigates to that route.
+const StoreView = lazy(() => import('./views/StoreView').then(m => ({ default: m.StoreView })));
+const ProductDetailView = lazy(() => import('./views/ProductDetailView').then(m => ({ default: m.ProductDetailView })));
+const CheckoutView = lazy(() => import('./views/CheckoutView').then(m => ({ default: m.CheckoutView })));
+const OrdersView = lazy(() => import('./views/OrdersView').then(m => ({ default: m.OrdersView })));
+const FavoritesView = lazy(() => import('./views/FavoritesView').then(m => ({ default: m.FavoritesView })));
+const CompareView = lazy(() => import('./views/CompareView').then(m => ({ default: m.CompareView })));
+const AccountView = lazy(() => import('./views/AccountView').then(m => ({ default: m.AccountView })));
+const SupportView = lazy(() => import('./views/SupportView').then(m => ({ default: m.SupportView })));
+const PaymentMethodsView = lazy(() => import('./views/PaymentMethodsView').then(m => ({ default: m.PaymentMethodsView })));
+const AboutView = lazy(() => import('./views/AboutView').then(m => ({ default: m.AboutView })));
+const AdminDashboardView = lazy(() => import('./views/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
+const OrderTrackingView = lazy(() => import('./views/OrderTrackingView').then(m => ({ default: m.OrderTrackingView })));
+
 import { MessageCircle, AlertTriangle } from 'lucide-react';
 
+const RouteLoadingFallback: React.FC = () => (
+  <div className="w-full flex items-center justify-center py-24">
+    <div className="w-10 h-10 rounded-full border-4 border-emerald-500/30 border-t-emerald-500 animate-spin" />
+  </div>
+);
+
 const AppContent: React.FC = () => {
-  const { state, currentUser, currentRoute, language, theme, isCartOpen, setIsCartOpen } = useStore();
+  const { state, currentUser, currentRoute, language, theme, isCartOpen, setIsCartOpen, completeAdminLoginFromLink } = useStore();
+
+  useEffect(() => {
+    void completeAdminLoginFromLink();
+  }, []);
 
   // Scroll to top on route change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentRoute]);
+    setIsCartOpen(false);
+  }, [currentRoute, setIsCartOpen]);
 
   // Check if store is in Maintenance Mode (Owner can still access)
-  const isMaintenanceActive = state.settings.maintenanceMode && currentUser?.role !== 'owner';
+  const isMaintenanceActive = state.settings.isMaintenanceMode && currentUser?.role !== 'owner';
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent('مرحباً متجر قويدر ستور 🎮🇯🇴 أود الاستفسار عن...');
@@ -101,7 +117,7 @@ const AppContent: React.FC = () => {
       } selection:bg-purple-600 selection:text-white antialiased`}
     >
       {/* Maintenance Mode Warning for Owner */}
-      {state.settings.maintenanceMode && currentUser?.role === 'owner' && (
+      {state.settings.isMaintenanceMode && currentUser?.role === 'owner' && (
         <div className="bg-amber-500 text-slate-950 px-4 py-2 text-center text-xs font-black flex items-center justify-center gap-2 shadow-lg sticky top-0 z-50">
           <AlertTriangle className="w-4 h-4 text-slate-950" />
           <span>
@@ -116,7 +132,9 @@ const AppContent: React.FC = () => {
       <Navbar />
 
       {/* Main Page Dynamic Content */}
-      <main className="flex-1 w-full pt-4 pb-16">{renderView()}</main>
+      <main className="flex-1 w-full pt-4 pb-16">
+        <Suspense fallback={<RouteLoadingFallback />}>{renderView()}</Suspense>
+      </main>
 
       {/* Slide-over Cart Drawer */}
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />

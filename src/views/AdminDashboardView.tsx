@@ -65,19 +65,16 @@ import {
   Copy,
   Info,
   Save,
-  Eye,
-  EyeOff
 } from 'lucide-react';
 
 export const AdminDashboardView: React.FC = () => {
   const {
     state,
     currentUser,
-    login,
+    requestAdminLoginLink,
     isAdminSessionVerified,
     requestSensitiveActionVerification,
     lockAdminSession,
-    switchDemoRole,
     formatPrice,
     addProduct,
     updateProduct,
@@ -103,10 +100,9 @@ export const AdminDashboardView: React.FC = () => {
 
   // Admin Portal Direct Login Form State
   const [adminEmail, setAdminEmail] = useState('owner@qwaderstore.jo');
-  const [adminPassword, setAdminPassword] = useState('123456');
-  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [adminLoginError, setAdminLoginError] = useState('');
   const [isAdminLoggingIn, setIsAdminLoggingIn] = useState(false);
+  const [adminLinkSent, setAdminLinkSent] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
     'overview' | 'orders' | 'products' | 'promos' | 'branding' | 'socials' | 'fulfillment' | 'users' | 'reviews' | 'support' | 'settings' | 'backup'
@@ -162,7 +158,7 @@ export const AdminDashboardView: React.FC = () => {
     lowStockThreshold: 5,
     deliveryTypeAr: 'حساب أساسي فوري',
     deliveryTypeEn: 'Instant Primary Account',
-    image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
+    image: '/images/hero-subscriptions.svg',
     shortDescAr: 'لعبة أصلية مع تفعيل مباشر',
     shortDescEn: 'Original game with instant activation',
     descriptionAr: 'لعبة بلايستيشن أصلية 100% مع ضمان دائم ودعم كامل للتفعيل.',
@@ -214,17 +210,19 @@ export const AdminDashboardView: React.FC = () => {
   }, [state?.products, productSearch]);
 
   // Calculate Overview Analytics
-  const totalRevenueJOD = (state?.orders || [])
-    .filter((o) => o.status === 'completed' || o.status === 'delivered')
-    .reduce((sum, o) => sum + (o.totalJOD || 0), 0);
+  const { totalRevenueJOD, totalRevenueUSD, lowStockProducts } = useMemo(() => {
+    const completedOrders = (state?.orders || []).filter(
+      (o) => o.status === 'completed' || o.status === 'delivered'
+    );
 
-  const totalRevenueUSD = (state?.orders || [])
-    .filter((o) => o.status === 'completed' || o.status === 'delivered')
-    .reduce((sum, o) => sum + (o.totalUSD || 0), 0);
-
-  const lowStockProducts = (state?.products || []).filter(
-    (p) => p.stockQuantity <= p.lowStockThreshold
-  );
+    return {
+      totalRevenueJOD: completedOrders.reduce((sum, o) => sum + (o.totalJOD || 0), 0),
+      totalRevenueUSD: completedOrders.reduce((sum, o) => sum + (o.totalUSD || 0), 0),
+      lowStockProducts: (state?.products || []).filter(
+        (p) => p.stockQuantity <= p.lowStockThreshold
+      ),
+    };
+  }, [state?.orders, state?.products]);
 
   // Sales Trends Data
   const salesChartData = [
@@ -262,7 +260,7 @@ export const AdminDashboardView: React.FC = () => {
       lowStockThreshold: 5,
       deliveryTypeAr: 'حساب أساسي فوري',
       deliveryTypeEn: 'Instant Primary Account',
-      image: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
+      image: '/images/hero-subscriptions.svg',
       shortDescAr: 'لعبة أصلية مع تفعيل مباشر',
       shortDescEn: 'Original game with instant activation',
       descriptionAr: 'لعبة بلايستيشن أصلية 100% مع ضمان دائم ودعم كامل للتفعيل.',
@@ -305,11 +303,11 @@ export const AdminDashboardView: React.FC = () => {
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    const productPayload = {
+    const productPayload: Partial<Product> = {
       nameAr: formData.nameAr,
       nameEn: formData.nameEn || formData.nameAr,
       category: formData.category,
-      platform: formData.platform,
+      platform: formData.platform as Product['platform'],
       regionAr: formData.regionAr,
       regionEn: formData.regionEn,
       priceJOD: Number(formData.priceJOD),
@@ -333,7 +331,7 @@ export const AdminDashboardView: React.FC = () => {
     if (editingProduct) {
       updateProduct(editingProduct.id, productPayload);
     } else {
-      addProduct(productPayload);
+      addProduct(productPayload as any);
     }
     setIsProductModalOpen(false);
   };
@@ -346,7 +344,7 @@ export const AdminDashboardView: React.FC = () => {
     if (!order) return;
 
     const currentKeys = order.digitalKeys || [];
-    updateOrderStatus(orderId, 'completed', [...currentKeys, key.trim()]);
+    updateOrderStatus(orderId, 'completed', [...currentKeys, key.trim()], undefined);
     setDigitalKeyInputs((prev) => ({ ...prev, [orderId]: '' }));
   };
 
@@ -389,7 +387,7 @@ export const AdminDashboardView: React.FC = () => {
   const isOwner = currentUser?.role === 'owner';
   const isStaff = currentUser?.role === 'staff' || isOwner;
 
-  const handleAdminDirectLogin = (e: React.FormEvent) => {
+  const handleAdminDirectLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdminLoginError('');
     if (!adminEmail.trim()) {
@@ -397,19 +395,12 @@ export const AdminDashboardView: React.FC = () => {
       return;
     }
     setIsAdminLoggingIn(true);
-    const res = login(adminEmail, adminPassword);
+    const res = await requestAdminLoginLink(adminEmail);
     setIsAdminLoggingIn(false);
-    if (!res.success) {
+    if (res.success) {
+      setAdminLinkSent(true);
+    } else {
       setAdminLoginError(res.error || (language === 'ar' ? 'بيانات الدخول غير صحيحة، يرجى التأكد والمحاولة مجدداً' : 'Login failed'));
-    }
-  };
-
-  const handleQuickAdminLogin = (role: 'owner' | 'staff') => {
-    setAdminLoginError('');
-    const email = role === 'owner' ? 'owner@qwaderstore.jo' : 'staff@qwaderstore.jo';
-    const res = login(email, '123456');
-    if (!res.success) {
-      switchDemoRole(role);
     }
   };
 
@@ -436,8 +427,8 @@ export const AdminDashboardView: React.FC = () => {
               </h2>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                 {language === 'ar'
-                  ? 'أدخل بيانات حساب الإدارة للوصول إلى إدارة الطلبات، المنتجات، المبيعات والتقارير.'
-                  : 'Enter administrator credentials to manage products, orders, inventory and revenue.'}
+                ? 'أدخل بريد حساب الإدارة وسنرسل رابط دخول إلى بريدك الإلكتروني.'
+                : 'Enter your admin email and we will send a sign-in link.'}
               </p>
             </div>
           </div>
@@ -466,68 +457,21 @@ export const AdminDashboardView: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-300">
-                  {language === 'ar' ? 'كلمة المرور' : 'Password'}
-                </label>
-              </div>
-              <div className="relative">
-                <input
-                  type={showAdminPassword ? 'text' : 'password'}
-                  required
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all pe-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAdminPassword(!showAdminPassword)}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-                  aria-label={showAdminPassword ? 'إخفاء كلمة المرور' : 'عرض كلمة المرور'}
-                >
-                  {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
             <button
               type="submit"
               disabled={isAdminLoggingIn}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:brightness-110 active:scale-[0.99] text-white font-black text-sm shadow-xl shadow-purple-900/40 transition-all font-cairo flex items-center justify-center gap-2"
             >
-              <Lock className="w-4 h-4" />
-              <span>{language === 'ar' ? 'دخول لوحة الإدارة 🚀' : 'Log In to Admin 🚀'}</span>
+              <ShieldCheck className="w-4 h-4" />
+              <span>{language === 'ar' ? 'إرسال رابط الدخول' : 'Send sign-in link'}</span>
             </button>
+            {adminLinkSent && (
+              <p className="text-center text-xs text-emerald-300">
+                {language === 'ar' ? 'تحقق من بريدك الإلكتروني واضغط الرابط لإكمال الدخول' : 'Check your email and click the link to finish signing in'}
+              </p>
+            )}
           </form>
 
-          {/* Quick Pre-Authorized Logins */}
-          <div className="pt-2 border-t border-white/10 space-y-3">
-            <span className="text-[11px] font-bold text-slate-400 text-center block">
-              {language === 'ar' ? 'أو تسجيل دخول فوري بالصلاحية المطلوبة:' : 'Or Quick Access by Role:'}
-            </span>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickAdminLogin('owner')}
-                className="p-3 rounded-2xl bg-amber-950/40 hover:bg-amber-950/70 border border-amber-500/40 text-amber-200 text-xs font-bold transition-all flex items-center justify-center gap-2 hover:scale-[1.02]"
-              >
-                <Crown className="w-4 h-4 text-amber-400" />
-                <span>{language === 'ar' ? '👑 مالك المتجر (عمر قويدر)' : '👑 Store Owner'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickAdminLogin('staff')}
-                className="p-3 rounded-2xl bg-purple-950/40 hover:bg-purple-950/70 border border-purple-500/40 text-purple-200 text-xs font-bold transition-all flex items-center justify-center gap-2 hover:scale-[1.02]"
-              >
-                <Shield className="w-4 h-4 text-purple-400" />
-                <span>{language === 'ar' ? '🛡️ مشرف المبيعات (أحمد)' : '🛡️ Sales Staff'}</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -1123,6 +1067,8 @@ export const AdminDashboardView: React.FC = () => {
                         <button
                           onClick={() => updateProductStock(p.id, p.stockQuantity - 1)}
                           className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 hover:text-white"
+                          aria-label={language === 'ar' ? `تقليل مخزون ${p.nameAr}` : `Decrease stock for ${p.nameEn}`}
+                          title={language === 'ar' ? 'تقليل المخزون' : 'Decrease stock'}
                         >
                           -
                         </button>
@@ -1138,6 +1084,8 @@ export const AdminDashboardView: React.FC = () => {
                         <button
                           onClick={() => updateProductStock(p.id, p.stockQuantity + 1)}
                           className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 hover:text-white"
+                          aria-label={language === 'ar' ? `زيادة مخزون ${p.nameAr}` : `Increase stock for ${p.nameEn}`}
+                          title={language === 'ar' ? 'زيادة المخزون' : 'Increase stock'}
                         >
                           +
                         </button>
@@ -1439,10 +1387,10 @@ export const AdminDashboardView: React.FC = () => {
                     </span>
                     <div className="grid grid-cols-4 gap-2">
                       {[
-                        { name: 'Neon Q', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80' },
-                        { name: 'Cyber Game', url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&auto=format&fit=crop&q=80' },
-                        { name: 'Pixel Shield', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=200&auto=format&fit=crop&q=80' },
-                        { name: 'Crown Gold', url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=200&auto=format&fit=crop&q=80' },
+                        { name: 'Neon Q', url: '/images/hero-wallet.svg' },
+                        { name: 'Cyber Game', url: '/images/hero-ps5.svg' },
+                        { name: 'Pixel Shield', url: '/images/hero-pickup.svg' },
+                        { name: 'Crown Gold', url: '/images/hero-wukong.svg' },
                       ].map((preset) => (
                         <button
                           key={preset.name}
@@ -1666,7 +1614,7 @@ export const AdminDashboardView: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="https://images.unsplash.com/..."
+                    placeholder="/images/hero-subscriptions.svg"
                     value={state.settings.branding?.headerBannerUrl || ''}
                     onChange={(e) =>
                       updateSettings({
@@ -2637,7 +2585,7 @@ export const AdminDashboardView: React.FC = () => {
                     type="text"
                     value={adminReplyText}
                     onChange={(e) => setAdminReplyText(e.target.value)}
-                    placeholder="الرد على العميل باسم إدارة متجر كوادر..."
+                    placeholder="الرد على العميل باسم إدارة متجر قويدر..."
                     className="flex-1 px-3 py-2 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 focus:border-purple-500 focus:outline-none"
                   />
                   <button
@@ -2718,12 +2666,32 @@ export const AdminDashboardView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">رقم هاتف كليك (CliQ Mobile)</label>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">بيانات كليك الإضافية (CliQ IBAN)</label>
                 <input
                   type="text"
-                  value={state.settings.cliqMobile}
-                  onChange={(e) => updateSettings({ cliqMobile: e.target.value })}
+                  value={state.settings.cliqIBAN}
+                  onChange={(e) => updateSettings({ cliqIBAN: e.target.value })}
                   className="w-full p-2.5 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">اسم البنك</label>
+                <input
+                  type="text"
+                  value={state.settings.bankNameAr}
+                  onChange={(e) => updateSettings({ bankNameAr: e.target.value })}
+                  className="w-full p-2.5 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-semibold mb-1">اسم صاحب الحساب</label>
+                <input
+                  type="text"
+                  value={state.settings.bankAccountName}
+                  onChange={(e) => updateSettings({ bankAccountName: e.target.value })}
+                  className="w-full p-2.5 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100"
                 />
               </div>
 
@@ -2741,8 +2709,8 @@ export const AdminDashboardView: React.FC = () => {
                 <label className="block text-xs text-slate-300 font-semibold mb-1">الآيبان البنكي (IBAN)</label>
                 <input
                   type="text"
-                  value={state.settings.bankIban}
-                  onChange={(e) => updateSettings({ bankIban: e.target.value })}
+                  value={state.settings.bankIBAN}
+                  onChange={(e) => updateSettings({ bankIBAN: e.target.value })}
                   className="w-full p-2.5 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100 font-mono"
                 />
               </div>

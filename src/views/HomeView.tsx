@@ -231,7 +231,7 @@ export const HomeView: React.FC = () => {
         <div className="p-8 sm:p-12 rounded-3xl glass-card border border-white/10 relative overflow-hidden">
           <div className="text-center max-w-2xl mx-auto mb-10">
             <span className="px-3.5 py-1 rounded-full text-xs font-bold text-purple-300 bg-purple-950/80 border border-purple-500/40">
-              {language === 'ar' ? 'كيف يعمل متجر كوادر؟' : 'How It Works'}
+              {language === 'ar' ? 'كيف يعمل متجر قويدر؟' : 'How It Works'}
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-100 font-cairo mt-3 mb-2">
               {language === 'ar' ? '3 خطوات بسيطة وكودك بجيبتك ⚡' : '3 Simple Steps to Get Your Game ⚡'}

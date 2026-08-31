@@ -99,6 +99,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({ onSelect
         />
         {query && (
           <button
+            title="مسح البحث"
             id="clear-search-btn"
             onClick={() => {
               setQuery('');
@@ -128,7 +129,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({ onSelect
                 </span>
                 <span className="text-[11px] text-slate-400 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-400" aria-hidden="true" />
-                  {language === 'ar' ? 'كوادر ستور' : 'QWADER'}
+                  {language === 'ar' ? 'قويدر ستور' : 'QWADER'}
                 </span>
               </div>
               <ul className="space-y-1" role="list">

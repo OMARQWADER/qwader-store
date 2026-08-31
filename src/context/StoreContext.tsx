@@ -1,15 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import {
-  collection,
-  doc,
-  setDoc,
-  updateDoc,
-  onSnapshot,
-  query,
-  orderBy
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import {
   StoreState,
   User,
   CartItem,
@@ -30,10 +20,10 @@ import {
   SensitiveVerificationChallenge,
   SimulatedEmailMessage
 } from '../types';
-import { INITIAL_STATE, INITIAL_USERS } from '../data/initialData';
+import { INITIAL_STATE } from '../data/initialData';
 import { getT } from '../utils/translations';
 import { verifyTOTPCode, generateBackupCodes, generateNumericOTP, playNotificationSound } from '../utils/twoFactor';
-
+import { sendOtpEmail } from '../lib/emailService';
 const STORAGE_KEY_DB = 'qwader_store_db_v1';
 const STORAGE_KEY_SESSION = 'qwader_store_auth_session';
 const STORAGE_KEY_CART = 'qwader_store_cart_v1';
@@ -76,20 +66,21 @@ interface StoreContextType {
   navigateTo: (route: string) => void;
   
   // Auth & 2FA
-  login: (email: string, password?: string) => { success: boolean; requires2FA?: boolean; method?: 'authenticator' | 'whatsapp' | 'sms' | 'email'; error?: string };
-  register: (name: string, email: string, phone: string, password?: string) => { success: boolean; error?: string };
+  login: (email: string) => Promise<{ success: boolean; requires2FA?: boolean; method?: 'authenticator' | 'whatsapp' | 'sms' | 'email'; error?: string }>;
+  completePasswordlessLogin: (email: string, code: string) => { success: boolean; requiresProfile?: boolean; error?: string };
+  createCustomerAccount: (data: { firstName: string; lastName: string; phone: string; email: string; promotionalEmails: boolean; authUid?: string; avatar?: string }) => { success: boolean; error?: string };
+  signInCustomer: (user: User) => void;
+  requestAdminLoginLink: (email: string) => Promise<{ success: boolean; error?: string }>;
+  completeAdminLoginFromLink: () => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  switchDemoRole: (role: UserRole) => void;
   updateUserRole: (userId: string, newRole: UserRole) => void;
   updateUserProfile: (data: Partial<User>) => void;
   completeTwoFactorLogin: (code: string) => { success: boolean; error?: string };
   cancelTwoFactorLogin: () => void;
   resendTwoFactorLoginOTP: () => { success: boolean; error?: string };
-  enableTwoFactor: (method: 'authenticator' | 'whatsapp' | 'sms' | 'email', secret: string, code: string, backupCodes: string[], phone?: string) => { success: boolean; error?: string };
-  disableTwoFactor: (password: string) => { success: boolean; error?: string };
+  enableTwoFactor: (method: 'authenticator' | 'whatsapp' | 'sms' | 'email', secret: string, code: string, expectedCode: string, backupCodes: string[], phone?: string) => { success: boolean; error?: string };
+  disableTwoFactor: () => { success: boolean; error?: string };
   regenerateBackupCodes: () => { success: boolean; backupCodes?: string[]; error?: string };
-  requestPasswordResetOTP: (email: string) => { success: boolean; error?: string };
-  resetPasswordWithOTP: (email: string, otp: string, newPassword: string) => { success: boolean; error?: string };
 
   // Step-Up Two-Step Sensitive Verification
   requestSensitiveActionVerification: (options: {
@@ -147,6 +138,9 @@ interface StoreContextType {
     deliveryCompanyId?: string;
     deliveryCompanyName?: string;
     paymentMethod: PaymentMethodType;
+    paymentProofImage?: string;
+    paymentProofFileName?: string;
+    paymentProofFileSize?: number;
     paymentReference?: string;
     notes?: string;
   }) => Order;
@@ -172,12 +166,16 @@ interface StoreContextType {
   // Support
   createSupportTicket: (subject: string, message: string, orderNumber?: string) => string;
   sendSupportMessage: (ticketId: string, message: string) => void;
+  updateTicketStatus: (ticketId: string, status: 'open' | 'closed' | 'resolved') => void;
   
   // Settings & System
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
   exportBackupJson: () => void;
   importBackupJson: (jsonData: string) => { success: boolean; error?: string };
+  exportDataJson: () => void;
+  importDataJson: (jsonData: string) => { success: boolean; error?: string };
   resetToFactoryDefaults: () => void;
+  resetToFactoryData: () => void;
   
   // Notifications
   markNotificationAsRead: (id: string) => void;
@@ -243,7 +241,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (e) {
       console.error('Failed to load store database:', e);
     }
-    return INITIAL_STATE;
+      return INITIAL_STATE;
   });
 
   // Current Session User
@@ -251,7 +249,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SESSION);
       if (saved) {
-        return JSON.parse(saved);
+        const savedSession = JSON.parse(saved) as Partial<User>;
+        const canonicalUser = state.users.find(
+          (user) => user.id === savedSession.id && user.email.toLowerCase() === savedSession.email?.toLowerCase()
+        );
+        if (canonicalUser) {
+          return canonicalUser;
+        }
+        localStorage.removeItem(STORAGE_KEY_SESSION);
       }
     } catch (e) {
       console.error('Failed to load session:', e);
@@ -324,7 +329,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [activeSensitiveChallenge, setActiveSensitiveChallenge] = useState<SensitiveVerificationChallenge | null>(null);
   const [simulatedEmailMessage, setSimulatedEmailMessage] = useState<SimulatedEmailMessage | null>(null);
   const [adminVerifiedUntil, setAdminVerifiedUntil] = useState<number>(0);
-  const [passwordResetChallenge, setPasswordResetChallenge] = useState<{
+  const [pendingPasswordlessOTP, setPendingPasswordlessOTP] = useState<{
     email: string;
     code: string;
     expiresAt: number;
@@ -344,6 +349,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   useEffect(() => {
+    console.count('[StoreContext] hash listener effect');
     const handleHashChange = () => {
       const hash = window.location.hash || '#home';
       setCurrentRoute(hash);
@@ -355,79 +361,41 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const navigateTo = (route: string) => {
+    setIsCartOpen(false);
     window.location.hash = route.startsWith('#') ? route : `#${route}`;
   };
 
   // Sync state to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_DB, JSON.stringify(state));
-    } catch (e) {
-      console.error('Failed to save store db to localStorage:', e);
-    }
+    console.count('[StoreContext] state persistence effect');
+    const serializedFullState = JSON.stringify(state);
+    console.log('[StoreContext] full state size:', serializedFullState.length);
+    const stateForStorage = {
+      ...state,
+      users: [],
+      orders: [],
+    };
+    const serializedState = JSON.stringify(stateForStorage);
+    console.log('[StoreContext] state size for localStorage:', serializedState.length);
+    const saveTimer = window.setTimeout(() => {
+      console.time('[StoreContext] state persistence');
+      try {
+        localStorage.setItem(STORAGE_KEY_DB, serializedState);
+      } catch (e) {
+        console.error('Failed to save store db to localStorage:', e);
+      } finally {
+        console.timeEnd('[StoreContext] state persistence');
+      }
+    }, 1000);
+
+    return () => window.clearTimeout(saveTimer);
   }, [state]);
 
-  // Real-time Firestore sync for Orders
-  const [isOrdersLoading, setIsOrdersLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    try {
-      const ordersRef = collection(db, 'orders');
-      const q = query(ordersRef, orderBy('createdAt', 'desc'));
-
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          setIsOrdersLoading(false);
-          if (!snapshot.empty) {
-            const firestoreOrders: Order[] = [];
-            snapshot.forEach((docSnap) => {
-              const data = docSnap.data() as Order;
-              firestoreOrders.push({
-                ...data,
-                id: docSnap.id,
-              });
-            });
-
-            setState((prev) => {
-              // Merge firestore orders with any non-firestore initial orders to prevent losing history
-              const mergedMap = new Map<string, Order>();
-              
-              // First add existing local orders safely
-              (prev?.orders || []).forEach((ord) => {
-                if (ord && ord.id) mergedMap.set(ord.id, ord);
-              });
-              // Then overwrite / add Firestore orders
-              firestoreOrders.forEach((ord) => {
-                if (ord && ord.id) mergedMap.set(ord.id, ord);
-              });
-
-              const mergedList = Array.from(mergedMap.values()).sort(
-                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              );
-
-              return {
-                ...prev,
-                orders: mergedList,
-              };
-            });
-          }
-        },
-        (error) => {
-          console.warn('Firestore onSnapshot notice:', error.message);
-          setIsOrdersLoading(false);
-        }
-      );
-
-      return () => unsubscribe();
-    } catch (err) {
-      console.warn('Could not establish Firestore listener:', err);
-      setIsOrdersLoading(false);
-    }
-  }, []);
+  const [isOrdersLoading, setIsOrdersLoading] = useState<boolean>(false);
 
   // Sync cart to localStorage
   useEffect(() => {
+    console.count('[StoreContext] cart persistence effect');
     try {
       localStorage.setItem(STORAGE_KEY_CART, JSON.stringify(cart));
     } catch (e) {
@@ -437,6 +405,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Sync wishlist
   useEffect(() => {
+    console.count('[StoreContext] wishlist persistence effect');
     try {
       localStorage.setItem(STORAGE_KEY_WISHLIST, JSON.stringify(wishlist));
     } catch (e) {
@@ -446,6 +415,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Sync compare
   useEffect(() => {
+    console.count('[StoreContext] compare persistence effect');
     try {
       localStorage.setItem(STORAGE_KEY_COMPARE, JSON.stringify(compareList));
     } catch (e) {
@@ -455,6 +425,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Sync session
   useEffect(() => {
+    console.count('[StoreContext] session persistence effect');
     try {
       if (currentUser) {
         localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
@@ -475,6 +446,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   useEffect(() => {
+    console.count('[StoreContext] language effect');
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
@@ -503,6 +475,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   useEffect(() => {
+    console.count('[StoreContext] theme effect');
     setTheme(theme);
   }, [theme]);
 
@@ -567,61 +540,94 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [state.notifications, currentUser]);
 
   // Auth & 2FA Methods
-  const login = (email: string, password?: string) => {
+  const requestPasswordlessOTP = async (email: string) => {
     const cleanEmail = email.trim().toLowerCase();
-    const user = state.users.find(
-      (u) => u.email.toLowerCase() === cleanEmail || (cleanEmail === 'owner@qwader.jo' && u.role === 'owner')
-    );
-    if (!user) {
-      return { success: false, error: language === 'ar' ? 'البريد الإلكتروني غير مسجل بالمتجر' : 'Email not registered' };
-    }
-    if (password && user.password && user.password !== password) {
-      return { success: false, error: language === 'ar' ? 'كلمة المرور غير صحيحة' : 'Incorrect password' };
+    if (!cleanEmail) {
+      return { success: false, error: language === 'ar' ? 'يرجى إدخال البريد الإلكتروني' : 'Please enter your email' };
     }
 
-    // Check if user has Two-Factor Authentication enabled
-    if (user.twoFactorEnabled) {
-      setPendingTwoFactorUser(user);
+    const code = generateNumericOTP(6);
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+    setPendingPasswordlessOTP({ email: cleanEmail, code, expiresAt });
 
-      // Generate a fresh 6-digit verification OTP
-      const otpCode = generateNumericOTP(6);
-      setPending2FALoginOTP(otpCode);
-
-      const targetChannel = user.twoFactorMethod === 'whatsapp' ? 'whatsapp' : (user.twoFactorMethod === 'sms' ? 'sms' : 'email');
-
-      // Dispatch security notification
-      const emailMsg: SimulatedEmailMessage = {
-        id: `sim-2fa-${Date.now()}`,
-        toEmail: user.email,
-        subjectAr: `🛡️ رمز التحقق بخطوتين لتسجيل الدخول [${otpCode}]`,
-        subjectEn: `🛡️ Two-Factor Login Verification Code [${otpCode}]`,
-        code: otpCode,
-        actionNameAr: 'تسجيل الدخول بالتحقق بخطوتين',
-        actionNameEn: '2FA Login Verification',
-        timestamp: new Date().toLocaleTimeString(language === 'ar' ? 'ar-JO' : 'en-US'),
-        expiresInSeconds: 300,
-        channel: targetChannel,
-      };
-      setSimulatedEmailMessage(emailMsg);
-      playNotificationSound();
-
-      return {
-        success: false,
-        requires2FA: true,
-        method: user.twoFactorMethod || 'authenticator',
-        error: language === 'ar' ? 'مطلوب رمز التحقق بخطوتين (2FA)' : '2FA verification code required',
-      };
+    const result = await sendOtpEmail({
+      toEmail: cleanEmail,
+      code,
+      purpose: language === 'ar' ? 'رمز تسجيل الدخول بدون كلمة مرور' : 'Passwordless sign-in code',
+    });
+    if (!result.success) {
+      return { success: false, error: result.error || (language === 'ar' ? 'تعذر إرسال رمز التحقق' : 'Could not send the verification code') };
     }
-
-    setCurrentUser(user);
-    setPendingTwoFactorUser(null);
-    setPending2FALoginOTP(null);
     addToast(
-      language === 'ar' ? 'يا هلا بيك!' : 'Welcome back!',
-      language === 'ar' ? `تم تسجيل دخولك بنجاح كـ ${user.name}` : `Signed in as ${user.name}`,
-      'success'
+      language === 'ar' ? 'تم إرسال رمز التحقق' : 'Verification code sent',
+      language === 'ar' ? `تفقد بريدك الإلكتروني: ${cleanEmail}` : `Check your inbox at ${cleanEmail}`,
+      'info'
     );
     return { success: true };
+  };
+
+  const login = async (email: string) => {
+    const result = await requestPasswordlessOTP(email);
+    return { ...result, codeSent: result.success };
+  };
+
+  const completePasswordlessLogin = (email: string, code: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const challenge = pendingPasswordlessOTP;
+    if (!challenge || challenge.email !== cleanEmail || challenge.code !== code.trim() || Date.now() > challenge.expiresAt) {
+      return { success: false, error: language === 'ar' ? 'رمز التحقق غير صحيح أو انتهت صلاحيته' : 'Invalid or expired verification code' };
+    }
+
+    const existingUser = state.users.find((candidate) => candidate.email.toLowerCase() === cleanEmail);
+    setPendingPasswordlessOTP(null);
+    if (!existingUser) {
+      return { success: true, requiresProfile: true };
+    }
+    signInCustomer(existingUser);
+    return { success: true };
+  };
+
+  const signInCustomer = (user: User) => {
+    setCurrentUser(user);
+    addToast(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Signed in successfully', language === 'ar' ? `أهلاً بك ${user.name}` : `Welcome ${user.name}`, 'success');
+  };
+
+  const createCustomerAccount = (data: { firstName: string; lastName: string; phone: string; email: string; promotionalEmails: boolean; authUid?: string; avatar?: string }) => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const firstName = data.firstName.trim();
+    const lastName = data.lastName.trim();
+    const phone = data.phone.trim();
+    if (!firstName || !lastName || !phone) {
+      return { success: false, error: language === 'ar' ? 'يرجى تعبئة جميع الحقول المطلوبة' : 'Please complete all required fields' };
+    }
+    const existingUser = state.users.find((candidate) => candidate.email.toLowerCase() === cleanEmail);
+    if (existingUser) {
+      signInCustomer(existingUser);
+      return { success: true };
+    }
+    const user: User = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: `${firstName} ${lastName}`,
+      email: cleanEmail,
+      phone,
+      role: 'customer',
+      authUid: data.authUid,
+      avatar: data.avatar,
+      registeredAt: new Date().toISOString(),
+      twoFactorEnabled: false,
+      promotionalEmails: data.promotionalEmails,
+    };
+    setState((prev) => ({ ...prev, users: [...prev.users, user] }));
+    signInCustomer(user);
+    return { success: true };
+  };
+
+  const requestAdminLoginLink = async (_email: string) => {
+    return { success: false, error: language === 'ar' ? 'تم إلغاء تسجيل الدخول الإداري في الوضع المحلي' : 'Admin sign-in is disabled in local-only mode' };
+  };
+
+  const completeAdminLoginFromLink = async () => {
+    return { success: false, error: language === 'ar' ? 'تم إلغاء تسجيل الدخول الإداري في الوضع المحلي' : 'Admin sign-in is disabled in local-only mode' };
   };
 
   const completeTwoFactorLogin = (code: string) => {
@@ -660,9 +666,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Check 2: Dynamic Email/SMS/WhatsApp OTP or TOTP code
     const isEmailOrDirectMatch = pending2FALoginOTP && cleanCode === pending2FALoginOTP;
     const isTOTPValid = user.twoFactorSecret ? verifyTOTPCode(user.twoFactorSecret, cleanCode) : false;
-    const isMasterCode = cleanCode === '123456' || cleanCode === '000000';
-
-    if (isEmailOrDirectMatch || isTOTPValid || isMasterCode) {
+    if (isEmailOrDirectMatch || isTOTPValid) {
       setCurrentUser(user);
       setPendingTwoFactorUser(null);
       setPending2FALoginOTP(null);
@@ -694,9 +698,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const emailMsg: SimulatedEmailMessage = {
       id: `sim-2fa-${Date.now()}`,
       toEmail: pendingTwoFactorUser.email,
-      subjectAr: `🛡️ رمز التحقق الجديد لتسجيل الدخول [${otpCode}]`,
-      subjectEn: `🛡️ New Two-Factor Login Code [${otpCode}]`,
-      code: otpCode,
+      subjectAr: `🛡️ رمز التحقق الجديد لتسجيل الدخول`,
+      subjectEn: `🛡️ New Two-Factor Login Code`,
+      code: '',
       actionNameAr: 'تسجيل الدخول بالتحقق بخطوتين',
       actionNameEn: '2FA Login Verification',
       timestamp: new Date().toLocaleTimeString(language === 'ar' ? 'ar-JO' : 'en-US'),
@@ -706,9 +710,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
+    void sendOtpEmail({
+      toEmail: pendingTwoFactorUser.email,
+      code: otpCode,
+      purpose: language === 'ar' ? 'إعادة إرسال رمز تسجيل الدخول' : 'Resend 2FA login code'
+    }).then((result) => {
+      if (!result.success) {
+        addToast(
+          language === 'ar' ? 'تعذر إرسال رمز جديد' : 'New code could not be sent',
+          result.error || (language === 'ar' ? 'تعذر إرسال الرمز الجديد إلى بريدك الإلكتروني' : 'Could not send the new code to your email.'),
+          'error'
+        );
+      }
+    });
+
     addToast(
       language === 'ar' ? 'تم إرسال رمز أمان جديد 🔄' : 'New code sent 🔄',
-      language === 'ar' ? `تم إرسال الرمز الجديد (${otpCode}) إلى بريدك/هاتفك` : `New code sent to ${pendingTwoFactorUser.email}`,
+      language === 'ar' ? 'تم إرسال رمز التحقق الجديد إلى بريدك الإلكتروني.' : `A new verification code has been sent to ${pendingTwoFactorUser.email}.`,
       'info'
     );
     return { success: true };
@@ -724,6 +742,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     method: 'authenticator' | 'whatsapp' | 'sms' | 'email',
     secret: string,
     code: string,
+    expectedCode: string,
     backupCodes: string[],
     phone?: string
   ) => {
@@ -732,7 +751,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     const cleanCode = code.trim();
-    const isValid = (method === 'authenticator' ? verifyTOTPCode(secret, cleanCode) : true) || cleanCode === '123456' || cleanCode.length === 6;
+    const cleanExpectedCode = expectedCode.trim();
+    if (method !== 'authenticator' && !cleanExpectedCode) {
+      return {
+        success: false,
+        error: language === 'ar' ? 'تعذر التحقق: لم يتم إنشاء رمز أمان صالح' : 'Verification failed: no valid security code was generated',
+      };
+    }
+
+    const isValid = method === 'authenticator' ? verifyTOTPCode(secret, cleanCode) : cleanCode === cleanExpectedCode;
     if (!isValid) {
       return {
         success: false,
@@ -776,15 +803,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return { success: true };
   };
 
-  const disableTwoFactor = (password: string) => {
+  const disableTwoFactor = () => {
     if (!currentUser) return { success: false, error: 'Not logged in' };
-
-    if (currentUser.password && currentUser.password !== password) {
-      return {
-        success: false,
-        error: language === 'ar' ? 'كلمة المرور الحالية غير صحيحة' : 'Incorrect current password',
-      };
-    }
 
     const updatedUser: User = {
       ...currentUser,
@@ -845,131 +865,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return { success: true, backupCodes: newCodes };
   };
 
-  // Password Reset Methods
-  const requestPasswordResetOTP = (email: string) => {
-    const cleanEmail = email.trim().toLowerCase();
-    const user = state.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!user) {
-      return {
-        success: false,
-        error: language === 'ar' ? 'البريد الإلكتروني المدخل غير مسجل في متجر كوادر' : 'Email is not registered',
-      };
-    }
-
-    const code = generateNumericOTP(6);
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-    setPasswordResetChallenge({
-      email: user.email,
-      code,
-      expiresAt,
-    });
-
-    const emailMsg: SimulatedEmailMessage = {
-      id: `sim-pwd-${Date.now()}`,
-      toEmail: user.email,
-      subjectAr: `🔐 رمز استعادة كلمة المرور لمتجر كوادر ستور [${code}]`,
-      subjectEn: `🔐 Password Reset Verification Code for QWADER STORE [${code}]`,
-      code,
-      actionNameAr: 'إعادة تعيين كلمة المرور',
-      actionNameEn: 'Password Reset Request',
-      timestamp: new Date().toLocaleTimeString(language === 'ar' ? 'ar-JO' : 'en-US'),
-      expiresInSeconds: 600,
-      channel: 'email',
-    };
-    setSimulatedEmailMessage(emailMsg);
-    playNotificationSound();
-
-    const notifItem: NotificationItem = {
-      id: `notif-pwd-${Date.now()}`,
-      userId: user.id,
-      titleAr: `رمز استعادة كلمة المرور: ${code}`,
-      titleEn: `Password Reset OTP: ${code}`,
-      messageAr: `تم إرسال رمز إعادة تعيين كلمة المرور (${code}) إلى ${user.email}. صالح لمدة 10 دقائق.`,
-      messageEn: `Password reset code (${code}) sent to ${user.email}. Valid for 10 minutes.`,
-      type: 'system',
-      isRead: false,
-      createdAt: new Date().toISOString(),
-    };
-    setState((prev) => ({
-      ...prev,
-      notifications: [notifItem, ...prev.notifications],
-    }));
-
-    addToast(
-      language === 'ar' ? 'تم إرسال رمز الاستعادة 📧' : 'Reset Code Sent 📧',
-      language === 'ar' ? `تم إرسال رمز التحقق (6 أرقام) إلى بريدك (${user.email})` : `Verification code sent to ${user.email}`,
-      'info'
-    );
-
-    return { success: true };
-  };
-
-  const resetPasswordWithOTP = (email: string, otp: string, newPassword: string) => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanOtp = otp.trim();
-
-    if (!cleanEmail || !cleanOtp || !newPassword.trim()) {
-      return { success: false, error: language === 'ar' ? 'يرجى تعبئة كافة الحقول المطلوبة' : 'Please fill all fields' };
-    }
-
-    if (newPassword.trim().length < 4) {
-      return { success: false, error: language === 'ar' ? 'كلمة المرور يجب أن لا تقل عن 4 خانات' : 'Password must be at least 4 chars' };
-    }
-
-    const user = state.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!user) {
-      return { success: false, error: language === 'ar' ? 'البريد الإلكتروني غير مسجل' : 'User not found' };
-    }
-
-    const isValid =
-      (passwordResetChallenge &&
-        passwordResetChallenge.email.toLowerCase() === cleanEmail &&
-        passwordResetChallenge.code === cleanOtp &&
-        Date.now() <= passwordResetChallenge.expiresAt) ||
-      cleanOtp === '123456' ||
-      cleanOtp === '000000' ||
-      (user.twoFactorBackupCodes && user.twoFactorBackupCodes.includes(cleanOtp.toUpperCase()));
-
-    if (!isValid) {
-      return { success: false, error: language === 'ar' ? 'رمز التحقق غير صحيح أو انتهت صلاحيته' : 'Invalid or expired OTP code' };
-    }
-
-    const updatedUser: User = {
-      ...user,
-      password: newPassword.trim(),
-    };
-
-    setState((prev) => ({
-      ...prev,
-      users: prev.users.map((u) => (u.id === user.id ? updatedUser : u)),
-      activityLogs: [
-        {
-          id: `act-${Date.now()}`,
-          userId: user.id,
-          userName: user.name,
-          userRole: user.role,
-          action: 'إعادة تعيين كلمة المرور',
-          details: `تم تغيير كلمة المرور بنجاح للمستخدم ${user.email}`,
-          timestamp: new Date().toISOString(),
-        },
-        ...prev.activityLogs,
-      ],
-    }));
-
-    setPasswordResetChallenge(null);
-    setSimulatedEmailMessage(null);
-    setCurrentUser(updatedUser);
-
-    addToast(
-      language === 'ar' ? 'تم تغيير كلمة المرور بنجاح 🔑' : 'Password Reset Successful 🔑',
-      language === 'ar' ? `أهلاً بك مجدداً، ${user.name}. تم تسجيل دخولك بكلمة المرور الجديدة` : 'Password updated and signed in successfully',
-      'success'
-    );
-
-    return { success: true };
-  };
-
   // Step-Up Two-Step Verification for Sensitive Actions
   const requestSensitiveActionVerification = (options: {
     actionType: SensitiveActionType;
@@ -985,7 +880,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }) => {
     const code = generateNumericOTP(6);
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
-    const targetEmail = options.targetEmail || currentUser?.email || 'omarqwader84@gmail.com';
+    const targetEmail = options.targetEmail || currentUser?.email || 'gmail';
     const targetPhone = options.targetPhone || currentUser?.phone || '+962 7 9000 0000';
     const channel = options.deliveryChannel || 'email';
 
@@ -1012,9 +907,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const emailMsg: SimulatedEmailMessage = {
       id: `sim-mail-${Date.now()}`,
       toEmail: targetEmail,
-      subjectAr: `رمز التحقق بخطوتين لتأكيد: ${options.titleAr} [${code}]`,
-      subjectEn: `Security Verification Code for: ${options.titleEn} [${code}]`,
-      code,
+      subjectAr: `رمز التحقق بخطوتين لتأكيد: ${options.titleAr}`,
+      subjectEn: `Security Verification Code for: ${options.titleEn}`,
+      code: '',
       actionNameAr: options.titleAr,
       actionNameEn: options.titleEn,
       timestamp: new Date().toLocaleTimeString(language === 'ar' ? 'ar-JO' : 'en-US'),
@@ -1023,6 +918,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     setSimulatedEmailMessage(emailMsg);
 
+    void sendOtpEmail({
+      toEmail: targetEmail,
+      code,
+      purpose: language === 'ar' ? 'تأكيد إجراء حساس' : 'Sensitive action verification'
+    }).then((result) => {
+      if (!result.success) {
+        addToast(
+          language === 'ar' ? 'فشل إرسال رمز التحقق' : 'Verification code failed to send',
+          result.error || (language === 'ar' ? 'تعذر إرسال رمز التأكيد إلى بريدك الإلكتروني' : 'Could not send the verification code to your email.'),
+          'error'
+        );
+      }
+    });
+
     // Play subtle chime sound
     playNotificationSound();
 
@@ -1030,10 +939,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const notifItem: NotificationItem = {
       id: `notif-sec-${Date.now()}`,
       userId: currentUser?.id || 'all',
-      titleAr: `رمز أمان جديد: ${code}`,
-      titleEn: `Security OTP: ${code}`,
-      messageAr: `تم إرسال رمز التحقق بخطوتين (${code}) لتأكيد ${options.titleAr}. صالح لمدة 5 دقائق.`,
-      messageEn: `Two-step verification code (${code}) sent for ${options.titleEn}. Valid for 5 minutes.`,
+      titleAr: 'رمز أمان جديد',
+      titleEn: 'Security OTP',
+      messageAr: `تم إرسال رمز التحقق بخطوتين لتأكيد ${options.titleAr}. صالح لمدة 5 دقائق.`,
+      messageEn: `Two-step verification code sent for ${options.titleEn}. Valid for 5 minutes.`,
       type: 'system',
       isRead: false,
       createdAt: new Date().toISOString(),
@@ -1068,7 +977,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
     }
 
-    const isMatch = clean === activeSensitiveChallenge.code || clean === '123456' || clean === '000000';
+    const isMatch = clean === activeSensitiveChallenge.code;
     if (!isMatch) {
       return {
         success: false,
@@ -1120,9 +1029,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const emailMsg: SimulatedEmailMessage = {
       id: `sim-mail-${Date.now()}`,
       toEmail: updated.targetEmail,
-      subjectAr: `رمز التحقق الجديد: ${updated.titleAr} [${newCode}]`,
-      subjectEn: `New Verification Code: ${updated.titleEn} [${newCode}]`,
-      code: newCode,
+      subjectAr: `رمز التحقق الجديد: ${updated.titleAr}`,
+      subjectEn: `New Verification Code: ${updated.titleEn}`,
+      code: '',
       actionNameAr: updated.titleAr,
       actionNameEn: updated.titleEn,
       timestamp: new Date().toLocaleTimeString(language === 'ar' ? 'ar-JO' : 'en-US'),
@@ -1132,9 +1041,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
+    void sendOtpEmail({
+      toEmail: updated.targetEmail,
+      code: newCode,
+      purpose: language === 'ar' ? 'إعادة إرسال رمز التأكيد' : 'Resend verification code'
+    }).then((result) => {
+      if (!result.success) {
+        addToast(
+          language === 'ar' ? 'تعذر إرسال الرمز الجديد' : 'New code failed to send',
+          result.error || (language === 'ar' ? 'تعذر إرسال رمز التحقق الجديد إلى بريدك الإلكتروني' : 'Could not send the new verification code to your email.'),
+          'error'
+        );
+      }
+    });
+
     addToast(
       language === 'ar' ? 'تم إرسال رمز جديد 🔄' : 'New Code Sent 🔄',
-      language === 'ar' ? `رمز التحقق الجديد: ${newCode}` : `New code sent to ${updated.targetEmail}`,
+      language === 'ar' ? 'تم إرسال رمز التحقق الجديد إلى بريدك الإلكتروني.' : `A new verification code has been sent to ${updated.targetEmail}.`,
       'info'
     );
   };
@@ -1172,73 +1095,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
-  const register = (name: string, email: string, phone: string, password?: string) => {
-    const existing = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (existing) {
-      return { success: false, error: language === 'ar' ? 'البريد الإلكتروني مسجل مسبقاً' : 'Email is already registered' };
-    }
-
-    const isFirstUser = state.users.length === 0;
-    const newUser: User = {
-      id: `usr-${Date.now()}`,
-      name,
-      email,
-      phone,
-      password: password || '123456',
-      role: isFirstUser ? 'owner' : 'customer',
-      registeredAt: new Date().toISOString(),
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      twoFactorEnabled: false,
-    };
-
-    setState((prev) => ({
-      ...prev,
-      users: [...prev.users, newUser],
-      activityLogs: [
-        {
-          id: `act-${Date.now()}`,
-          userId: newUser.id,
-          userName: newUser.name,
-          userRole: newUser.role,
-          action: 'تسجيل حساب جديد',
-          details: `تسجيل مستخدم جديد: ${newUser.name} (${newUser.email})`,
-          timestamp: new Date().toISOString(),
-        },
-        ...prev.activityLogs,
-      ],
-    }));
-
-    setCurrentUser(newUser);
-    addToast(
-      language === 'ar' ? 'أهلاً بك في قويدر ستور!' : 'Welcome to QWADER STORE!',
-      language === 'ar' ? `تم إنشاء حسابك بنجاح. نتمنى لك تسوقاً ممتعاً!` : 'Your account was created successfully!',
-      'success'
-    );
-    return { success: true };
-  };
-
   const logout = () => {
     setCurrentUser(null);
     addToast(
       language === 'ar' ? 'تم تسجيل الخروج' : 'Signed out',
       language === 'ar' ? 'نتشرف بزيارتك القادمة دائماً يا غالي' : 'See you next time!',
-      'info'
-    );
-  };
-
-  const switchDemoRole = (role: UserRole) => {
-    const targetUser = state.users.find((u) => u.role === role) || {
-      id: `usr-demo-${role}`,
-      name: role === 'owner' ? 'عمر قويدر (مالك)' : role === 'staff' ? 'أحمد قويدر (مشرف)' : 'زبون قويدر (عميل)',
-      email: `${role}@qwaderstore.jo`,
-      phone: '+962 7 9000 0000',
-      role,
-      registeredAt: new Date().toISOString(),
-    };
-    setCurrentUser(targetUser);
-    addToast(
-      language === 'ar' ? 'تبديل الحساب التجريبي' : 'Role Switched',
-      language === 'ar' ? `أنت الآن تتصفح بصلاحية: ${role === 'owner' ? 'المالك الكامل' : role === 'staff' ? 'مشرف مبيعات' : 'عميل'}` : `Active role: ${role}`,
       'info'
     );
   };
@@ -1450,6 +1311,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     deliveryCompanyId?: string;
     deliveryCompanyName?: string;
     paymentMethod: PaymentMethodType;
+    paymentProofImage?: string;
+    paymentProofFileName?: string;
+    paymentProofFileSize?: number;
     paymentReference?: string;
     notes?: string;
   }): Order => {
@@ -1504,6 +1368,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       deliveryCompanyId: data.deliveryCompanyId,
       deliveryCompanyName: data.deliveryCompanyName,
       paymentMethod: data.paymentMethod,
+      paymentProofImage: data.paymentProofImage,
+      paymentProofFileName: data.paymentProofFileName,
+      paymentProofFileSize: data.paymentProofFileSize,
       paymentReference: data.paymentReference,
       items: orderItems,
       subtotalJOD,
@@ -1561,16 +1428,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
     });
 
-    // Save order asynchronously into Firebase Firestore
-    try {
-      const orderDocRef = doc(db, 'orders', newOrder.id);
-      setDoc(orderDocRef, newOrder).catch((err) => {
-        console.warn('Firestore setDoc notice:', err);
-      });
-    } catch (e) {
-      console.warn('Error initiating Firestore write:', e);
-    }
-
     clearCart();
     return newOrder;
   };
@@ -1600,22 +1457,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         timeline: [...order.timeline, timelineEvent],
         ...(digitalDeliveries ? { digitalDeliveries } : {}),
       };
-
-      // Asynchronously update status in Firebase Firestore
-      try {
-        const orderDocRef = doc(db, 'orders', orderId);
-        updateDoc(orderDocRef, {
-          status,
-          updatedAt: updatedOrder.updatedAt,
-          timeline: updatedOrder.timeline,
-          ...(digitalDeliveries ? { digitalDeliveries } : {}),
-        }).catch((err) => {
-          // If doc doesn't exist yet in Firestore, save entire object
-          setDoc(orderDocRef, updatedOrder).catch((e) => console.warn('Firestore save order error:', e));
-        });
-      } catch (e) {
-        console.warn('Error updating order in Firestore:', e);
-      }
 
       const newNotif: NotificationItem = {
         id: `notif-${Date.now()}`,
@@ -1852,7 +1693,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     addToast(
       language === 'ar' ? 'تم إرسال تذكرتك للدعم الفني 💬' : 'Support ticket submitted 💬',
-      language === 'ar' ? 'سيقوم فريق كوادر بالرد عليك خلال دقائق' : 'Our team will respond shortly',
+      language === 'ar' ? 'سيقوم فريق قويدر بالرد عليك خلال دقائق' : 'Our team will respond shortly',
       'success'
     );
 
@@ -1936,7 +1777,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const parsed = JSON.parse(jsonData);
       if (!parsed.products || !parsed.settings) {
-        return { success: false, error: 'الملف لا يحتوي على بنية بيانات متجر كوادر الصحيحة' };
+        return { success: false, error: 'الملف لا يحتوي على بنية بيانات متجر قويدر الصحيحة' };
       }
       setState(parsed);
       addToast(
@@ -2007,9 +1848,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         unreadNotificationsCount,
         navigateTo,
         login,
-        register,
+        completePasswordlessLogin,
+        createCustomerAccount,
+        signInCustomer,
+        requestAdminLoginLink,
+        completeAdminLoginFromLink,
         logout,
-        switchDemoRole,
         updateUserRole,
         updateUserProfile,
         completeTwoFactorLogin,
@@ -2018,8 +1862,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         enableTwoFactor,
         disableTwoFactor,
         regenerateBackupCodes,
-        requestPasswordResetOTP,
-        resetPasswordWithOTP,
         requestSensitiveActionVerification,
         verifySensitiveActionCode,
         cancelSensitiveActionVerification,
@@ -2053,7 +1895,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         deleteReview,
         createSupportTicket,
         sendSupportMessage,
-        addSupportMessage: sendSupportMessage,
         updateTicketStatus,
         updateSettings,
         exportBackupJson,

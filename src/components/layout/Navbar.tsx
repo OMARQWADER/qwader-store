@@ -170,7 +170,7 @@ export const Navbar: React.FC = () => {
             {state.settings.branding?.logoUrl ? (
               <img
                 src={state.settings.branding.logoUrl}
-                alt={language === 'ar' ? 'شعار متجر كوادر' : 'Qwader Store Logo'}
+                alt={language === 'ar' ? 'شعار متجر قويدر' : 'Qwader Store Logo'}
                 className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-xl shadow-[0_0_15px_rgba(124,58,237,0.4)] group-hover:scale-105 transition-transform bg-black/20 flex-shrink-0"
               />
             ) : (
@@ -780,7 +780,7 @@ export const Navbar: React.FC = () => {
                     <span>{language === 'ar' ? 'تسليم فوري ومباشر في الأردن 🇯🇴' : 'Direct & Instant Jordan Delivery 🇯🇴'}</span>
                   </div>
                   <a
-                    href={`https://wa.me/${state.settings.whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('مرحباً متجر كوادر ستور، أحتاج مساعدة بخصوص منتج')}`}
+                    href={`https://wa.me/${state.settings.whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('مرحباً متجر قويدر ستور، أحتاج مساعدة بخصوص منتج')}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-200 font-bold transition-all text-xs"

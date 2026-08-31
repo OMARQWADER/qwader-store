@@ -15,6 +15,8 @@ export const translations = {
     account: 'حسابي',
     login: 'تسجيل الدخول',
     logout: 'تسجيل الخروج',
+    email: 'البريد الإلكتروني',
+    phone: 'رقم الهاتف',
     register: 'إنشاء حساب جديد',
     searchPlaceholder: 'ابحث عن لعبة، كود PSN، اشتراك بلس أو بطاقة ستيم...',
     allCategories: 'جميع الأقسام',
@@ -60,7 +62,7 @@ export const translations = {
     cartTotal: 'المجموع الإجمالي',
     subtotal: 'المجموع الفرعي',
     promoDiscount: 'خصم كود الترويج',
-    enterPromoCode: 'أدخل كود الخصم (مثال: QWADER10)',
+    enterPromoCode: 'أدخل كود الخصم',
     applyPromo: 'تطبيق الخصم',
     proceedToCheckout: 'إتمام الطلب الآن',
     checkoutTitle: 'إتمام الطلب والدفع',
@@ -170,6 +172,8 @@ export const translations = {
     account: 'My Account',
     login: 'Sign In',
     logout: 'Sign Out',
+    email: 'Email',
+    phone: 'Phone',
     register: 'Create Account',
     searchPlaceholder: 'Search games, PSN codes, PS Plus, Steam cards...',
     allCategories: 'All Categories',
@@ -312,5 +316,5 @@ export const translations = {
 };
 
 export function getT(lang: 'ar' | 'en') {
-  return translations[lang] || translations.ar;
+  return ((translations[lang] || translations.ar) as Record<string, string>);
 }

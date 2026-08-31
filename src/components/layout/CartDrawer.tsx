@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import {
   X,
@@ -14,10 +14,10 @@ import {
   Check
 } from 'lucide-react';
 
-export const CartDrawer: React.FC = () => {
+export const CartDrawer: React.FC<{ isOpen?: boolean; onClose?: () => void }> = ({ isOpen, onClose }) => {
   const {
     cart,
-    isCartOpen,
+    isCartOpen: contextIsCartOpen,
     setIsCartOpen,
     removeFromCart,
     updateCartQuantity,
@@ -33,6 +33,32 @@ export const CartDrawer: React.FC = () => {
 
   const [promoInput, setPromoInput] = useState('');
   const [promoError, setPromoError] = useState('');
+  const isCartOpen = isOpen ?? contextIsCartOpen;
+
+  useEffect(() => {
+    const shouldLockBody = Boolean(isCartOpen);
+    document.body.style.overflow = shouldLockBody ? 'hidden' : '';
+
+    if (!shouldLockBody) {
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (onClose) onClose();
+        setIsCartOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isCartOpen, setIsCartOpen]);
 
   if (!isCartOpen) return null;
 
@@ -73,18 +99,17 @@ export const CartDrawer: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label={t.cart}>
-      {/* Backdrop */}
       <div
         id="cart-drawer-backdrop"
         onClick={() => setIsCartOpen(false)}
         aria-hidden="true"
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity animate-in fade-in"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity animate-in fade-in pointer-events-auto"
       />
 
-      <div className="fixed inset-y-0 end-0 max-w-full flex">
+      <div className="fixed inset-y-0 end-0 max-w-full flex pointer-events-none">
         <div
           id="cart-drawer-panel"
-          className="w-screen max-w-md glass-panel flex flex-col shadow-2xl border-s border-white/10 text-slate-100 animate-in slide-in-from-right duration-300"
+          className="w-screen max-w-md glass-panel flex flex-col shadow-2xl border-s border-white/10 text-slate-100 animate-in slide-in-from-right duration-300 pointer-events-auto"
         >
           {/* Header */}
           <div className="p-5 border-b border-white/10 flex items-center justify-between">
@@ -114,8 +139,9 @@ export const CartDrawer: React.FC = () => {
               )}
               <button
                 id="close-cart-drawer-btn"
-                onClick={() => setIsCartOpen(false)}
+                onClick={() => { if (onClose) onClose(); setIsCartOpen(false); }}
                 aria-label={language === 'ar' ? 'إغلاق سلة المشتريات' : 'Close cart drawer'}
+                title={language === 'ar' ? 'إغلاق السلة' : 'Close cart'}
                 className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -137,6 +163,7 @@ export const CartDrawer: React.FC = () => {
                 <button
                   id="cart-continue-shopping-btn"
                   onClick={() => {
+                    if (onClose) onClose();
                     setIsCartOpen(false);
                     navigateTo('#store');
                   }}
@@ -169,6 +196,7 @@ export const CartDrawer: React.FC = () => {
                           id={`remove-cart-item-${item.product.id}`}
                           onClick={() => removeFromCart(item.product.id)}
                           aria-label={language === 'ar' ? `حذف ${item.product.nameAr} من السلة` : `Remove ${item.product.nameEn} from cart`}
+                          title={language === 'ar' ? 'حذف المنتج' : 'Remove product'}
                           className="text-slate-500 hover:text-rose-400 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
@@ -190,6 +218,7 @@ export const CartDrawer: React.FC = () => {
                           id={`qty-decrease-${item.product.id}`}
                           onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)}
                           aria-label={language === 'ar' ? `تقليل كمية ${item.product.nameAr}` : `Decrease quantity of ${item.product.nameEn}`}
+                          title={language === 'ar' ? 'تقليل الكمية' : 'Decrease quantity'}
                           className="text-slate-400 hover:text-white p-0.5"
                         >
                           <Minus className="w-3 h-3" aria-hidden="true" />
@@ -200,6 +229,7 @@ export const CartDrawer: React.FC = () => {
                           onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
                           disabled={item.quantity >= item.product.stockQuantity}
                           aria-label={language === 'ar' ? `زيادة كمية ${item.product.nameAr}` : `Increase quantity of ${item.product.nameEn}`}
+                          title={language === 'ar' ? 'زيادة الكمية' : 'Increase quantity'}
                           className={`p-0.5 ${
                             item.quantity >= item.product.stockQuantity
                               ? 'text-slate-600 cursor-not-allowed'

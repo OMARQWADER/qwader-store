@@ -135,11 +135,13 @@ export interface FulfillmentSettings {
   pickupAddressEn: string;
   pickupHoursAr: string;
   pickupHoursEn: string;
+  pickupWorkingHoursAr?: string;
   pickupPhone: string;
   pickupInstructionsAr: string;
   pickupInstructionsEn: string;
   allowDelivery: boolean;
   freeDeliveryThresholdJOD?: number;
+  freeShippingMinimumJOD?: number;
   governorates: GovernorateDeliveryRate[];
   deliveryCompanies: DeliveryCompany[];
 }
@@ -158,6 +160,7 @@ export interface Order {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
+  digitalKeys?: string[];
   preferredDeliveryMethod: 'whatsapp' | 'email' | 'both';
   fulfillmentType: 'pickup' | 'delivery';
   shippingGovernorate?: string;
@@ -169,6 +172,8 @@ export interface Order {
   deliveryCompanyName?: string;
   paymentMethod: PaymentMethodType;
   paymentProofImage?: string;
+  paymentProofFileName?: string;
+  paymentProofFileSize?: number;
   paymentReference?: string;
   items: OrderItem[];
   subtotalJOD: number;
@@ -198,7 +203,7 @@ export interface User {
   email: string;
   phone: string;
   role: UserRole;
-  password?: string;
+  authUid?: string;
   avatar?: string;
   city?: string;
   registeredAt: string;
@@ -209,13 +214,13 @@ export interface User {
   twoFactorBackupCodes?: string[];
   twoFactorCreatedAt?: string;
   emailVerified?: boolean;
+  promotionalEmails?: boolean;
   sensitiveActionVerifiedUntil?: number; // session timestamp for step-up verification
 }
 
 export type SensitiveActionType = 
   | 'admin_access'
   | 'profile_update'
-  | 'password_change'
   | 'role_update'
   | 'factory_reset'
   | 'store_settings_update'
@@ -272,9 +277,19 @@ export interface SupportTicket {
   userPhone: string;
   subject: string;
   orderNumber?: string;
-  status: 'open' | 'in_progress' | 'resolved';
+  category?: 'order_inquiry' | 'technical_help' | 'activation_help' | 'general';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
   createdAt: string;
   lastActivity: string;
+  updatedAt?: string;
+  messages?: Array<{
+    id: string;
+    senderId: string;
+    senderName: string;
+    senderRole: UserRole;
+    text: string;
+    createdAt: string;
+  }>;
 }
 
 export interface NotificationItem {
@@ -303,6 +318,9 @@ export interface ActivityLog {
 export interface StoreSettings {
   storeNameAr: string;
   storeNameEn: string;
+  cliqMobile?: string;
+  bankName?: string;
+  bankIban?: string;
   taglineAr: string;
   taglineEn: string;
   descriptionAr: string;
@@ -323,10 +341,11 @@ export interface StoreSettings {
   deliveryNoteAr: string;
   deliveryNoteEn: string;
   isMaintenanceMode: boolean;
+  maintenanceMode?: boolean;
   maintenanceMessageAr: string;
   maintenanceMessageEn: string;
   defaultCurrency: Currency;
-  usdExchangeRate: number; // 1 JOD = ~1.41 USD (or 1 USD = 0.71 JOD)
+  usdExchangeRate: number;
   lowStockGlobalThreshold: number;
   socialLinks: SocialLinks;
   branding: BrandingSettings;
@@ -348,6 +367,8 @@ export interface StoreState {
     code: string;
     discountPercent?: number;
     discountFixedJOD?: number;
+    minOrderAmountJOD?: number;
+    usageCount?: number;
     active: boolean;
   }[];
 }

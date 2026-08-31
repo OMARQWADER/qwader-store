@@ -33,8 +33,10 @@ import {
   generateBackupCodes,
   getOTPAuthUri,
   generateQRCodeSVG,
-  calculateCurrentTOTP
+  calculateCurrentTOTP,
+  generateNumericOTP
 } from '../utils/twoFactor';
+import { sendOtpEmail } from '../lib/emailService';
 
 export const AccountView: React.FC = () => {
   const {
@@ -42,15 +44,15 @@ export const AccountView: React.FC = () => {
     pendingTwoFactorUser,
     login,
     logout,
-    register,
+    completePasswordlessLogin,
+    createCustomerAccount,
+    signInCustomer,
     completeTwoFactorLogin,
     cancelTwoFactorLogin,
     resendTwoFactorLoginOTP,
     enableTwoFactor,
     disableTwoFactor,
     regenerateBackupCodes,
-    requestPasswordResetOTP,
-    resetPasswordWithOTP,
     requestSensitiveActionVerification,
     updateUserProfile,
     formatPrice,
@@ -62,34 +64,29 @@ export const AccountView: React.FC = () => {
   } = useStore();
 
   // Mode & Tabs
-  const [isLoginMode, setIsLoginMode] = useState(true);
-  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
-  const [forgotPasswordStep, setForgotPasswordStep] = useState<'request' | 'verify'>('request');
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'orders'>('profile');
 
   // Auth Inputs
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authCode, setAuthCode] = useState('');
+  const [authStep, setAuthStep] = useState<'email' | 'code'>('email');
   const [twoFactorInputCode, setTwoFactorInputCode] = useState('');
   const [isUsingBackupCode, setIsUsingBackupCode] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileFirstName, setProfileFirstName] = useState('');
+  const [profileLastName, setProfileLastName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileCountryCode, setProfileCountryCode] = useState('+962');
+  const [profilePromotionalEmails, setProfilePromotionalEmails] = useState(false);
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<{ email: string; authUid: string; avatar?: string } | null>(null);
 
-  // Forgot Password Inputs
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [resetOtpCode, setResetOtpCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [resetError, setResetError] = useState('');
-  const [resetSuccess, setResetSuccess] = useState('');
 
   // Profile Edit Inputs
   const [editName, setEditName] = useState(currentUser?.name || '');
   const [editPhone, setEditPhone] = useState(currentUser?.phone || '');
   const [editCity, setEditCity] = useState(currentUser?.city || '');
   const [editAvatar, setEditAvatar] = useState(currentUser?.avatar || '');
-  const [editPassword, setEditPassword] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // 2FA Setup Wizard State
@@ -98,15 +95,14 @@ export const AccountView: React.FC = () => {
   const [selectedMethod, setSelectedMethod] = useState<'authenticator' | 'whatsapp' | 'email'>('authenticator');
   const [tempSecret, setTempSecret] = useState('');
   const [tempBackupCodes, setTempBackupCodes] = useState<string[]>([]);
+  const [setupOtpCode, setSetupOtpCode] = useState('');
   const [verifyCodeInput, setVerifyCodeInput] = useState('');
   const [setupError, setSetupError] = useState('');
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [copiedBackupCodes, setCopiedBackupCodes] = useState(false);
 
   // 2FA Disable State
-  const [isDisable2FAModalOpen, setIsDisable2FAModalOpen] = useState(false);
-  const [disablePasswordInput, setDisablePasswordInput] = useState('');
-  const [disableError, setDisableError] = useState('');
+  const [disableError, setDisableError] = useState<string>('');
 
   const userOrders = (state?.orders || []).filter(
     (o) => o.userId === currentUser?.id || o.customerPhone === currentUser?.phone
@@ -118,10 +114,33 @@ export const AccountView: React.FC = () => {
     const backupCodes = generateBackupCodes(8);
     setTempSecret(secret);
     setTempBackupCodes(backupCodes);
+    setSetupOtpCode('');
     setVerifyCodeInput('');
     setSetupError('');
     setSetupStep('choose');
     setIs2FASetupModalOpen(true);
+  };
+
+  const sendSetupOtp = async () => {
+    const otpCode = generateNumericOTP(6);
+    setSetupOtpCode(otpCode);
+    setSetupError('');
+
+    const result = await sendOtpEmail({
+      toEmail: currentUser?.email || '',
+      code: otpCode,
+      purpose: language === 'ar' ? 'تفعيل التحقق بخطوتين' : 'Two-factor activation verification'
+    });
+
+    if (!result.success) {
+      setSetupOtpCode('');
+      setSetupError(
+        result.error || (language === 'ar' ? 'تعذر إرسال رمز التحقق إلى بريدك الإلكتروني' : 'Could not send the verification code to your email.')
+      );
+      return false;
+    }
+
+    return true;
   };
 
   // Submit 2FA Verification
@@ -132,6 +151,7 @@ export const AccountView: React.FC = () => {
       selectedMethod,
       tempSecret,
       verifyCodeInput,
+      setupOtpCode,
       tempBackupCodes,
       currentUser?.phone
     );
@@ -140,72 +160,6 @@ export const AccountView: React.FC = () => {
       setSetupStep('backup');
     } else if (res.error) {
       setSetupError(res.error);
-    }
-  };
-
-  // Handle Request Password Reset OTP
-  const handleRequestResetOTP = (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetError('');
-    setResetSuccess('');
-    if (!forgotEmail.trim()) {
-      setResetError(language === 'ar' ? 'يرجى إدخال البريد الإلكتروني' : 'Please enter your email');
-      return;
-    }
-    const res = requestPasswordResetOTP(forgotEmail.trim());
-    if (res.success) {
-      setForgotPasswordStep('verify');
-      setResetSuccess(
-        language === 'ar'
-          ? `تم إرسال رمز التحقق إلى (${forgotEmail.trim()}). تفقد صندوق الوارد أو الرسالة في أعلى الشاشة.`
-          : `Verification code sent to ${forgotEmail.trim()}`
-      );
-    } else if (res.error) {
-      setResetError(res.error);
-    }
-  };
-
-  // Handle Submit New Password with OTP
-  const handleResetPasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetError('');
-    if (!resetOtpCode.trim() || !newPassword.trim()) {
-      setResetError(language === 'ar' ? 'يرجى إدخال رمز التحقق وكلمة المرور الجديدة' : 'Please fill all fields');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setResetError(language === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match');
-      return;
-    }
-    if (newPassword.length < 4) {
-      setResetError(language === 'ar' ? 'كلمة المرور يجب أن لا تقل عن 4 خانات' : 'Password must be at least 4 chars');
-      return;
-    }
-
-    const res = resetPasswordWithOTP(forgotEmail.trim(), resetOtpCode.trim(), newPassword.trim());
-    if (res.success) {
-      setIsForgotPasswordMode(false);
-      setForgotPasswordStep('request');
-      setForgotEmail('');
-      setResetOtpCode('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setResetError('');
-    } else if (res.error) {
-      setResetError(res.error);
-    }
-  };
-
-  // Submit 2FA Disable
-  const handleConfirm2FADisable = (e: React.FormEvent) => {
-    e.preventDefault();
-    setDisableError('');
-    const res = disableTwoFactor(disablePasswordInput);
-    if (res.success) {
-      setIsDisable2FAModalOpen(false);
-      setDisablePasswordInput('');
-    } else if (res.error) {
-      setDisableError(res.error);
     }
   };
 
@@ -231,29 +185,55 @@ export const AccountView: React.FC = () => {
   };
 
   // Handle Main Auth Submit
-  const handleAuthSubmit = (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-
-    if (isLoginMode) {
-      const res = login(email.trim(), password.trim());
-      if (res.requires2FA) {
-        setAuthError('');
-        setTwoFactorInputCode('');
-        setIsUsingBackupCode(false);
-      } else if (!res.success && res.error) {
+    if (authStep === 'email') {
+      const res = await login(email.trim());
+      if (res.success) {
+        setAuthStep('code');
+        setAuthCode('');
+      } else if (res.error) {
         setAuthError(res.error);
       }
-    } else {
-      if (!name.trim() || !phone.trim()) {
-        setAuthError(language === 'ar' ? 'يرجى تعبئة كافة الحقول المطلوبة' : 'Please fill all fields');
-        return;
-      }
-      const res = register(name.trim(), email.trim(), phone.trim(), password.trim());
-      if (!res.success && res.error) {
-        setAuthError(res.error);
-      }
+      return;
     }
+
+    const res = completePasswordlessLogin(email.trim(), authCode.trim());
+    if (res.success && res.requiresProfile) {
+      setProfileFirstName('');
+      setProfileLastName('');
+      setProfilePhone('');
+      setProfileCountryCode('+962');
+      setProfilePromotionalEmails(false);
+      setPendingGoogleUser(null);
+      setIsProfileModalOpen(true);
+    } else if (!res.success && res.error) {
+      setAuthError(res.error);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setAuthError(language === 'ar' ? 'تم تعطيل تسجيل الدخول عبر Google في الوضع المحلي.' : 'Google sign-in is disabled in local-only mode.');
+  };
+
+  const handleProfileSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const result = createCustomerAccount({
+      firstName: profileFirstName,
+      lastName: profileLastName,
+      phone: `${profileCountryCode} ${profilePhone}`,
+      email: pendingGoogleUser?.email || email,
+      promotionalEmails: profilePromotionalEmails,
+      authUid: pendingGoogleUser?.authUid,
+      avatar: pendingGoogleUser?.avatar,
+    });
+    if (!result.success) {
+      setAuthError(result.error || '');
+      return;
+    }
+    setIsProfileModalOpen(false);
+    setPendingGoogleUser(null);
   };
 
   // Handle 2FA Login Completion
@@ -274,19 +254,11 @@ export const AccountView: React.FC = () => {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const isPasswordChange = !!editPassword.trim();
-
     requestSensitiveActionVerification({
-      actionType: isPasswordChange ? 'password_change' : 'profile_update',
-      titleAr: isPasswordChange
-        ? 'تأكيد تغيير كلمة المرور وتحديث الحساب'
-        : 'تأكيد تعديل بيانات الملف الشخصي والأمان',
-      titleEn: isPasswordChange
-        ? 'Confirm Password & Profile Update'
-        : 'Confirm Profile & Security Update',
-      descriptionAr: isPasswordChange
-        ? 'تم طلب تغيير كلمة المرور. لحماية حسابك، يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل إلى بريدك الإلكتروني.'
-        : 'لحماية حسابك وتأكيد هويتك، يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل إلى بريدك الإلكتروني.',
+      actionType: 'profile_update',
+      titleAr: 'تأكيد تعديل بيانات الملف الشخصي',
+      titleEn: 'Confirm Profile Update',
+      descriptionAr: 'لحماية حسابك وتأكيد هويتك، يرجى إدخال رمز التحقق المكون من 6 أرقام المرسل إلى بريدك الإلكتروني.',
       descriptionEn:
         'To protect your account, please enter the 6-digit verification code sent to your registered email.',
       onSuccess: () => {
@@ -295,10 +267,8 @@ export const AccountView: React.FC = () => {
           phone: editPhone.trim() || currentUser?.phone,
           city: editCity.trim(),
           avatar: editAvatar.trim() || currentUser?.avatar,
-          ...(editPassword.trim() ? { password: editPassword.trim() } : {}),
         });
         setIsEditingProfile(false);
-        setEditPassword('');
       },
     });
   };
@@ -413,7 +383,7 @@ export const AccountView: React.FC = () => {
           <div className="p-6 sm:p-8 rounded-3xl glass-card border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <img
-                src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80'}
+                src={currentUser.avatar || '/images/avatar-placeholder.svg'}
                 alt={currentUser.name}
                 className="w-16 h-16 rounded-2xl object-cover border-2 border-purple-400/50 shadow-lg"
               />
@@ -608,18 +578,6 @@ export const AccountView: React.FC = () => {
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs text-slate-300 font-semibold mb-1">
-                        {language === 'ar' ? 'تغيير كلمة المرور (اتركه فارغاً للإبقاء على الحالية)' : 'Change Password (leave blank to keep current)'}
-                      </label>
-                      <input
-                        type="password"
-                        value={editPassword}
-                        onChange={(e) => setEditPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full p-3 rounded-2xl text-xs bg-white/5 border border-white/10 text-white focus:border-purple-500 focus:outline-none"
-                      />
-                    </div>
                   </div>
 
                   <button
@@ -674,9 +632,8 @@ export const AccountView: React.FC = () => {
                 {currentUser.twoFactorEnabled ? (
                   <button
                     onClick={() => {
-                      setDisablePasswordInput('');
-                      setDisableError('');
-                      setIsDisable2FAModalOpen(true);
+                      const result = disableTwoFactor();
+                      if (!result.success) setDisableError(result.error || 'Unable to disable 2FA');
                     }}
                     className="px-4 py-2 rounded-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-xs font-bold transition-all"
                   >
@@ -881,7 +838,7 @@ export const AccountView: React.FC = () => {
                 <Lock className="w-7 h-7" />
               </div>
               <h2 className="text-xl font-bold text-slate-100 font-cairo">
-                {isLoginMode ? t.login : t.register}
+                {language === 'ar' ? 'تسجيل الدخول' : 'Sign in'}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
                 {language === 'ar' ? 'سجل دخولك لمتابعة مشترياتك وحسابك الرقمي' : 'Sign in to access your digital orders'}
@@ -889,35 +846,6 @@ export const AccountView: React.FC = () => {
             </div>
 
             <form onSubmit={handleAuthSubmit} className="space-y-4">
-              {!isLoginMode && (
-                <>
-                  <div>
-                    <label className="block text-xs text-slate-300 font-semibold mb-1">{t.fullName}</label>
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="عمر قويدر"
-                      className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-slate-100 focus:border-purple-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-slate-300 font-semibold mb-1">{t.phone}</label>
-                    <input
-                      type="tel"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="079XXXXXXXX"
-                      className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-slate-100 focus:border-purple-500 focus:outline-none text-start"
-                      dir="ltr"
-                    />
-                  </div>
-                </>
-              )}
-
               <div>
                 <label className="block text-xs text-slate-300 font-semibold mb-1">{t.email}</label>
                 <input
@@ -925,23 +853,29 @@ export const AccountView: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="omarqwader84@gmail.com أو user@gmail.com"
+                  placeholder="user@gmail.com"
                   className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-slate-100 focus:border-purple-500 focus:outline-none text-start"
                   dir="ltr"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs text-slate-300 font-semibold mb-1">{t.password}</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-slate-100 focus:border-purple-500 focus:outline-none"
-                />
-              </div>
+              {authStep === 'code' && (
+                <div>
+                  <label className="block text-xs text-slate-300 font-semibold mb-1">
+                    {language === 'ar' ? 'رمز التحقق المرسل إلى بريدك' : 'Verification code sent to your email'}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    maxLength={6}
+                    value={authCode}
+                    onChange={(e) => setAuthCode(e.target.value)}
+                    placeholder="123456"
+                    className="w-full p-3.5 rounded-2xl text-center text-lg tracking-widest font-mono font-bold bg-white/10 border border-purple-500/40 text-white focus:border-purple-400 focus:outline-none"
+                  />
+                </div>
+              )}
 
               {authError && (
                 <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center">
@@ -949,189 +883,63 @@ export const AccountView: React.FC = () => {
                 </div>
               )}
 
-              {isLoginMode && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsForgotPasswordMode(true);
-                      setForgotPasswordStep('request');
-                      setForgotEmail(email || '');
-                      setResetError('');
-                      setResetSuccess('');
-                    }}
-                    className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold"
-                  >
-                    {language === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
-                  </button>
-                </div>
-              )}
-
               <button
                 type="submit"
                 className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/30 transition-all font-cairo"
               >
-                {isLoginMode ? t.login : t.register}
+                {authStep === 'email'
+                  ? (language === 'ar' ? 'إرسال رمز التحقق' : 'Send verification code')
+                  : (language === 'ar' ? 'تأكيد الدخول' : 'Verify and sign in')}
               </button>
+              {authStep === 'code' && (
+                <button type="button" onClick={() => setAuthStep('email')} className="w-full text-xs text-slate-400 hover:text-white">
+                  {language === 'ar' ? 'تغيير البريد الإلكتروني' : 'Use a different email'}
+                </button>
+              )}
             </form>
-
-            <div className="text-center pt-2 border-t border-white/10">
+            <div className="relative border-t border-white/10 pt-5">
+              <span className="absolute -top-2.5 start-1/2 -translate-x-1/2 bg-slate-900 px-3 text-[10px] text-slate-500">
+                {language === 'ar' ? 'أو' : 'OR'}
+              </span>
               <button
                 type="button"
-                onClick={() => {
-                  setIsLoginMode(!isLoginMode);
-                  setAuthError('');
-                }}
-                className="text-xs text-purple-400 hover:text-purple-300 font-semibold underline"
+                onClick={handleGoogleSignIn}
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-3.5 text-xs font-bold text-white transition-all hover:bg-white/10"
               >
-                {isLoginMode
-                  ? language === 'ar'
-                    ? 'ليس لديك حساب؟ إنشاء حساب جديد'
-                    : "Don't have an account? Sign up"
-                  : language === 'ar'
-                  ? 'لديك حساب بالفعل؟ تسجيل الدخول'
-                  : 'Already have an account? Sign in'}
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm font-black text-[#4285F4]">G</span>
+                {language === 'ar' ? 'تسجيل الدخول عبر Google' : 'Sign in with Google'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* FORGOT PASSWORD MODAL / CARD */}
-      {isForgotPasswordMode && !currentUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-md p-6 sm:p-8 rounded-3xl glass-card border border-purple-500/40 space-y-6 shadow-2xl">
-            <button
-              onClick={() => setIsForgotPasswordMode(false)}
-              className="absolute top-5 left-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto mb-3">
-                <KeyRound className="w-7 h-7" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-100 font-cairo">
-                {language === 'ar' ? 'استعادة كلمة المرور' : 'Password Reset'}
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                {forgotPasswordStep === 'request'
-                  ? language === 'ar'
-                    ? 'أدخل بريدك الإلكتروني لإرسال رمز التحقق الأمني (OTP)'
-                    : 'Enter your email to receive a secure reset code'
-                  : language === 'ar'
-                  ? 'أدخل رمز التحقق المكون من 6 أرقام وكلمة المرور الجديدة'
-                  : 'Enter the 6-digit verification code and new password'}
-              </p>
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <form onSubmit={handleProfileSubmit} className="w-full max-w-md space-y-5 rounded-3xl border border-purple-500/40 bg-slate-900 p-6 shadow-2xl">
+            <div>
+              <h3 className="text-lg font-bold text-white font-cairo">{language === 'ar' ? 'بياناتك الأساسية' : 'Basic information'}</h3>
+              <p className="mt-1 text-xs text-slate-400">{language === 'ar' ? 'أكمل بياناتك للمتابعة إلى حسابك' : 'Complete your details to continue'}</p>
             </div>
-
-            {forgotPasswordStep === 'request' ? (
-              <form onSubmit={handleRequestResetOTP} className="space-y-4">
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">{t.email}</label>
-                  <input
-                    type="email"
-                    required
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="omarqwader84@gmail.com"
-                    className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-slate-100 focus:border-purple-500 focus:outline-none text-start"
-                    dir="ltr"
-                  />
-                </div>
-
-                {resetError && (
-                  <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center">
-                    {resetError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/30 transition-all font-cairo"
-                >
-                  {language === 'ar' ? 'إرسال رمز التحقق عبر الإيميل 📧' : 'Send Verification OTP 📧'}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
-                {resetSuccess && (
-                  <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold text-center">
-                    {resetSuccess}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    {language === 'ar' ? 'رمز التحقق (OTP) من 6 أرقام' : '6-digit OTP code'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={10}
-                    value={resetOtpCode}
-                    onChange={(e) => setResetOtpCode(e.target.value)}
-                    placeholder="123456"
-                    className="w-full p-3.5 rounded-2xl text-center text-lg tracking-widest font-mono font-bold bg-white/10 border border-purple-500/40 text-white focus:border-purple-400 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    {language === 'ar' ? 'كلمة المرور الجديدة' : 'New Password'}
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-white focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    {language === 'ar' ? 'تأكيد كلمة المرور' : 'Confirm New Password'}
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-white focus:border-purple-500 focus:outline-none"
-                  />
-                </div>
-
-                {resetError && (
-                  <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center">
-                    {resetError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition-all font-cairo"
-                >
-                  {language === 'ar' ? 'تأكيد وحفظ كلمة المرور الجديدة 🔐' : 'Confirm & Reset Password 🔐'}
-                </button>
-
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      requestPasswordResetOTP(forgotEmail);
-                    }}
-                    className="text-xs text-amber-400 hover:text-amber-300 font-semibold"
-                  >
-                    {language === 'ar' ? 'إعادة إرسال رمز التحقق مرة أخرى 🔄' : 'Resend verification code 🔄'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
+            <div className="grid grid-cols-2 gap-3">
+              <input required value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} placeholder={language === 'ar' ? 'الاسم الأول' : 'First name'} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white outline-none focus:border-purple-500" />
+              <input required value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} placeholder={language === 'ar' ? 'الاسم الأخير' : 'Last name'} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white outline-none focus:border-purple-500" />
+            </div>
+            <div className="flex gap-2">
+              <select value={profileCountryCode} onChange={(e) => setProfileCountryCode(e.target.value)} className="rounded-xl border border-white/10 bg-slate-800 p-3 text-sm text-white outline-none">
+                <option value="+962">+962</option><option value="+966">+966</option><option value="+971">+971</option><option value="+20">+20</option><option value="+1">+1</option><option value="+44">+44</option>
+              </select>
+              <input required value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder={language === 'ar' ? 'رقم الهاتف' : 'Phone number'} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white outline-none focus:border-purple-500" dir="ltr" />
+            </div>
+            <label className="flex items-start gap-2 text-xs text-slate-300">
+              <input type="checkbox" checked={profilePromotionalEmails} onChange={(e) => setProfilePromotionalEmails(e.target.checked)} className="mt-0.5 accent-purple-500" />
+              <span>{language === 'ar' ? 'أرغب في تلقي الرسائل الترويجية عبر البريد الإلكتروني' : 'I would like to receive promotional emails'}</span>
+            </label>
+            {authError && <div className="rounded-xl border border-rose-500/40 bg-rose-500/20 p-3 text-center text-xs text-rose-300">{authError}</div>}
+            <button type="submit" className="w-full rounded-full bg-purple-600 py-3.5 text-xs font-bold text-white transition hover:bg-purple-500">
+              {language === 'ar' ? 'التسجيل' : 'Register'}
+            </button>
+          </form>
         </div>
       )}
 
@@ -1142,6 +950,7 @@ export const AccountView: React.FC = () => {
             <button
               onClick={() => setIs2FASetupModalOpen(false)}
               className="absolute top-5 left-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400"
+              title={language === 'ar' ? 'إغلاق النافذة' : 'Close window'}
             >
               <X className="w-5 h-5" />
             </button>
@@ -1238,7 +1047,16 @@ export const AccountView: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => setSetupStep('scan')}
+                  onClick={async () => {
+                    if (selectedMethod === 'authenticator') {
+                      setSetupStep('scan');
+                    } else {
+                      const sent = await sendSetupOtp();
+                      if (sent) {
+                        setSetupStep('verify');
+                      }
+                    }
+                  }}
                   className="w-full py-3.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-900/30 font-cairo"
                 >
                   {language === 'ar' ? 'المتابعة للخطوة التالية' : 'Continue'}
@@ -1367,6 +1185,16 @@ export const AccountView: React.FC = () => {
                   </div>
                 )}
 
+                {selectedMethod !== 'authenticator' && (
+                  <button
+                    type="button"
+                    onClick={sendSetupOtp}
+                    className="text-xs text-amber-400 hover:text-amber-300 font-semibold"
+                  >
+                    {language === 'ar' ? 'إعادة إرسال الرمز 🔄' : 'Resend verification code 🔄'}
+                  </button>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     type="button"
@@ -1444,60 +1272,6 @@ export const AccountView: React.FC = () => {
         </div>
       )}
 
-      {/* 2FA DISABLE CONFIRMATION MODAL */}
-      {isDisable2FAModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-md p-6 sm:p-8 rounded-3xl glass-card border border-rose-500/40 space-y-5 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
-              <AlertTriangle className="w-7 h-7" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-100 font-cairo">
-                {language === 'ar' ? 'تعطيل التحقق بخطوتين (2FA)' : 'Disable 2FA'}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                {language === 'ar'
-                  ? 'يرجى إدخال كلمة المرور الحالية لتأكيد تعطيل الحماية الإضافية'
-                  : 'Enter your password to confirm disabling 2FA'}
-              </p>
-            </div>
-
-            <form onSubmit={handleConfirm2FADisable} className="space-y-4">
-              <input
-                type="password"
-                required
-                autoFocus
-                value={disablePasswordInput}
-                onChange={(e) => setDisablePasswordInput(e.target.value)}
-                placeholder="••••••••"
-                className="w-full p-3.5 rounded-2xl text-xs bg-white/5 border border-white/10 text-white focus:border-rose-500 focus:outline-none text-center"
-              />
-
-              {disableError && (
-                <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-300 text-xs font-semibold">
-                  {disableError}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsDisable2FAModalOpen(false)}
-                  className="flex-1 py-3 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 font-bold text-xs"
-                >
-                  {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg font-cairo"
-                >
-                  {language === 'ar' ? 'تأكيد التعطيل' : 'Disable'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#022c22"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <circle cx="200" cy="520" r="200" fill="#34d399" opacity="0.18"/>
+  <circle cx="980" cy="170" r="180" fill="#60a5fa" opacity="0.2"/>
+  <rect x="180" y="170" width="360" height="300" rx="24" fill="#111827" opacity="0.8"/>
+  <rect x="240" y="220" width="240" height="120" rx="16" fill="#10b981" opacity="0.9"/>
+  <path d="M310 280h100v18H310zm0 42h130v18H310z" fill="#022c22"/>
+  <rect x="620" y="200" width="330" height="210" rx="28" fill="#0f172a" opacity="0.82"/>
+  <text x="662" y="272" font-size="42" font-family="Arial, sans-serif" font-weight="700" fill="#f8fafc">CLIQ</text>
+  <text x="662" y="332" font-size="32" font-family="Arial, sans-serif" font-weight="600" fill="#a7f3d0">JORDAN</text>
+  <text x="662" y="380" font-size="20" font-family="Arial, sans-serif" fill="#d1fae5">PICKUP & DELIVERY</text>
+</svg>

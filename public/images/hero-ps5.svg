@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <circle cx="900" cy="180" r="180" fill="#7c3aed" opacity="0.35"/>
+  <circle cx="220" cy="500" r="200" fill="#0ea5e9" opacity="0.22"/>
+  <rect x="130" y="120" width="330" height="420" rx="28" fill="#0b1120" opacity="0.8"/>
+  <rect x="180" y="150" width="230" height="250" rx="20" fill="url(#glow)" opacity="0.92"/>
+  <path d="M236 310h118v26H236zm0-52h118v26H236zm0 108h118v26H236z" fill="#e2e8f0" opacity="0.9"/>
+  <rect x="510" y="170" width="440" height="180" rx="28" fill="#111827" opacity="0.7"/>
+  <text x="560" y="240" font-size="54" font-family="Arial, sans-serif" font-weight="700" fill="#f8fafc">QWADER</text>
+  <text x="560" y="295" font-size="38" font-family="Arial, sans-serif" font-weight="600" fill="#c4b5fd">GAME VAULT</text>
+  <rect x="560" y="360" width="260" height="60" rx="30" fill="#8b5cf6"/>
+  <text x="620" y="400" text-anchor="middle" font-size="26" font-family="Arial, sans-serif" font-weight="700" fill="#f8fafc">PLAY NOW</text>
+</svg>

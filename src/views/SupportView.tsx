@@ -64,7 +64,7 @@ export const SupportView: React.FC = () => {
   };
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent('مرحباً فريق الدعم الفني في متجر كوادر ستور 🎮');
+    const text = encodeURIComponent('مرحباً فريق الدعم الفني في متجر قويدر ستور 🎮');
     window.open(`https://wa.me/${state.settings.whatsappNumber.replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
   };
 

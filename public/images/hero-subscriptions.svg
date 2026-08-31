@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <circle cx="980" cy="130" r="150" fill="#fbbf24" opacity="0.24"/>
+  <circle cx="260" cy="550" r="190" fill="#8b5cf6" opacity="0.22"/>
+  <rect x="150" y="140" width="320" height="420" rx="26" fill="#111827" opacity="0.8"/>
+  <rect x="200" y="180" width="220" height="170" rx="22" fill="#fbbf24" opacity="0.9"/>
+  <path d="M245 240h130v28H245zm0 52h100v26H245z" fill="#1f2937"/>
+  <rect x="560" y="210" width="340" height="90" rx="22" fill="#1e293b" opacity="0.8"/>
+  <text x="600" y="268" font-size="42" font-family="Arial, sans-serif" font-weight="700" fill="#f8fafc">PS PLUS</text>
+  <rect x="560" y="340" width="360" height="120" rx="28" fill="#f59e0b" opacity="0.9"/>
+  <text x="590" y="392" font-size="36" font-family="Arial, sans-serif" font-weight="700" fill="#1f2937">12 MONTH</text>
+  <text x="590" y="432" font-size="22" font-family="Arial, sans-serif" fill="#1f2937">SAVE UP TO 40%</text>
+</svg>

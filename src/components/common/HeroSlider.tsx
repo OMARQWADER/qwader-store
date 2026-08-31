@@ -65,7 +65,7 @@ export const HeroSlider: React.FC = () => {
       secondaryCtaTextAr: 'عرض لعبة FC 25',
       secondaryCtaTextEn: 'View FC 25 Deal',
       secondaryCtaAction: fc25 ? `#product/${fc25.id}` : '#store',
-      image: fc25?.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&auto=format&fit=crop&q=80',
+      image: fc25?.image || '/images/hero-ps5.svg',
       fallbackGradient: 'from-purple-950 via-slate-900 to-indigo-950',
       accentGlow: 'bg-purple-600/30',
       priceTagAr: fc25 ? `ابتداءً من ${formatPrice(fc25.priceJOD, fc25.priceUSD)}` : 'عروض حصرية',
@@ -88,7 +88,7 @@ export const HeroSlider: React.FC = () => {
       secondaryCtaTextAr: 'باقة ديلوكس 12 شهر',
       secondaryCtaTextEn: 'Deluxe 12M Plan',
       secondaryCtaAction: psPlus ? `#product/${psPlus.id}` : '#store?category=subscriptions',
-      image: psPlus?.image || 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=1200&auto=format&fit=crop&q=80',
+      image: psPlus?.image || '/images/hero-subscriptions.svg',
       fallbackGradient: 'from-amber-950 via-slate-900 to-yellow-950',
       accentGlow: 'bg-amber-500/25',
       priceTagAr: psPlus ? `سنة كاملة بـ ${formatPrice(psPlus.priceJOD, psPlus.priceUSD)}` : 'خصم سنوي',
@@ -111,7 +111,7 @@ export const HeroSlider: React.FC = () => {
       secondaryCtaTextAr: 'تصفح كل الألعاب',
       secondaryCtaTextEn: 'Browse All Games',
       secondaryCtaAction: '#store?category=games',
-      image: wukong?.image || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200&auto=format&fit=crop&q=80',
+      image: wukong?.image || '/images/hero-wukong.svg',
       fallbackGradient: 'from-rose-950 via-slate-900 to-amber-950',
       accentGlow: 'bg-orange-600/25',
       priceTagAr: wukong ? `عرض خاص: ${formatPrice(wukong.priceJOD, wukong.priceUSD)}` : 'خصم خاص',
@@ -134,7 +134,7 @@ export const HeroSlider: React.FC = () => {
       secondaryCtaTextAr: 'بطاقات Steam PC',
       secondaryCtaTextEn: 'Steam Cards',
       secondaryCtaAction: '#store?category=steam_cards',
-      image: 'https://images.unsplash.com/photo-1612287233207-6c2e74288001?w=1200&auto=format&fit=crop&q=80',
+      image: '/images/hero-wallet.svg',
       fallbackGradient: 'from-cyan-950 via-slate-900 to-blue-950',
       accentGlow: 'bg-cyan-500/25',
       priceTagAr: 'أكواد رقمية رسمية 100%',
@@ -157,7 +157,7 @@ export const HeroSlider: React.FC = () => {
       secondaryCtaTextAr: 'تتبع حالة طلبك',
       secondaryCtaTextEn: 'Track Your Order',
       secondaryCtaAction: '#track-order',
-      image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&auto=format&fit=crop&q=80',
+      image: '/images/hero-pickup.svg',
       fallbackGradient: 'from-emerald-950 via-slate-900 to-teal-950',
       accentGlow: 'bg-emerald-500/25',
       priceTagAr: 'اسم كليك: QWADERPAY',
@@ -428,6 +428,7 @@ export const HeroSlider: React.FC = () => {
                   {/* Action Buttons (Touch-target >= 44px) */}
                   <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                     <button
+                      title="الشريحة السابقة"
                       id={`hero-slide-cta-${slide.id}`}
                       type="button"
                       onClick={(e) => {
@@ -443,6 +444,7 @@ export const HeroSlider: React.FC = () => {
 
                     {slide.secondaryCtaTextAr && (
                       <button
+                        title="الشريحة التالية"
                         id={`hero-slide-secondary-${slide.id}`}
                         type="button"
                         onClick={(e) => {
@@ -463,6 +465,7 @@ export const HeroSlider: React.FC = () => {
 
         {/* Prev / Next Navigation Arrows (Desktop / Tablet) */}
         <button
+          title="الشريحة السابقة"
           id="hero-slider-prev-btn"
           type="button"
           onClick={(e) => {
@@ -477,6 +480,7 @@ export const HeroSlider: React.FC = () => {
         </button>
 
         <button
+          title="الشريحة التالية"
           id="hero-slider-next-btn"
           type="button"
           onClick={(e) => {
@@ -513,6 +517,7 @@ export const HeroSlider: React.FC = () => {
               const isSelected = idx === currentIndex;
               return (
                 <button
+                  title="اختيار الشريحة"
                   key={slide.id}
                   type="button"
                   onClick={() => goToSlide(idx)}

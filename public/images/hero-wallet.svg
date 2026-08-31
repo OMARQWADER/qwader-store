@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <circle cx="220" cy="180" r="180" fill="#22d3ee" opacity="0.18"/>
+  <circle cx="980" cy="540" r="200" fill="#2dd4bf" opacity="0.20"/>
+  <rect x="170" y="200" width="420" height="250" rx="32" fill="#0b1120" opacity="0.8"/>
+  <rect x="280" y="255" width="200" height="140" rx="18" fill="#06b6d4" opacity="0.9"/>
+  <rect x="620" y="215" width="330" height="220" rx="26" fill="#111827" opacity="0.8"/>
+  <text x="660" y="286" font-size="46" font-family="Arial, sans-serif" font-weight="700" fill="#f8fafc">STEAM</text>
+  <text x="660" y="348" font-size="38" font-family="Arial, sans-serif" font-weight="600" fill="#67e8f9">PSN GIFT</text>
+  <text x="660" y="396" font-size="20" font-family="Arial, sans-serif" fill="#cbd5e1">INSTANT TOP-UP</text>
+</svg>

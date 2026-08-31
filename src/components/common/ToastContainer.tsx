@@ -39,6 +39,7 @@ export const ToastContainer: React.FC = () => {
               {toast.message && <p className="text-xs opacity-90 leading-relaxed">{toast.message}</p>}
             </div>
             <button
+              title="إغلاق التنبيه"
               id={`close-toast-${toast.id}`}
               onClick={() => removeToast(toast.id)}
               className="text-slate-400 hover:text-slate-200 transition-colors p-1"

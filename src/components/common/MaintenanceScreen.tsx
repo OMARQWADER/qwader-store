@@ -1,12 +1,12 @@
 import React from 'react';
 import { useStore } from '../../context/StoreContext';
-import { Wrench, MessageCircle, Phone, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Wrench, MessageCircle, Phone } from 'lucide-react';
 
 export const MaintenanceScreen: React.FC = () => {
-  const { state, language, switchDemoRole } = useStore();
+  const { state, language } = useStore();
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent('مرحباً متجر كوادر، أود الاستفسار عن توفر الألعاب وبطاقات الستور!');
+    const text = encodeURIComponent('مرحباً متجر قويدر، أود الاستفسار عن توفر الألعاب وبطاقات الستور!');
     window.open(`https://wa.me/${state.settings.whatsappNumber.replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
   };
 
@@ -36,6 +36,7 @@ export const MaintenanceScreen: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
             <button
+              title="إعادة المحاولة"
               id="maintenance-whatsapp-btn"
               onClick={handleWhatsApp}
               className="w-full sm:w-auto flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
@@ -54,19 +55,6 @@ export const MaintenanceScreen: React.FC = () => {
             </a>
           </div>
 
-          <div className="pt-6 border-t border-slate-800 flex flex-col items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <ShieldAlert className="w-4 h-4 text-violet-400" />
-              <span>{language === 'ar' ? 'هل أنت مسؤول بالمتجر؟' : 'Are you an admin?'}</span>
-            </div>
-            <button
-              id="maintenance-switch-to-owner-btn"
-              onClick={() => switchDemoRole('owner')}
-              className="text-xs text-violet-400 hover:text-violet-300 font-bold underline transition-colors"
-            >
-              {language === 'ar' ? 'الدخول كمسؤول (مالك المتجر) لإلغاء وضع الصيانة' : 'Switch to Owner role to disable maintenance'}
-            </button>
-          </div>
         </div>
       </div>
     </div>
