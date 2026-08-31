@@ -70,3 +70,4 @@
 ---
 صُنع بكل فخر وشغف لخدمة مجتمع اللاعبين في الأردن والوطن العربي 🇯🇴🎮
 // Trigger rebuild for EmailJS env vars
+// Force rebuild - $(Get-Date)
