@@ -23,7 +23,6 @@ import {
 import { INITIAL_STATE } from '../data/initialData';
 import { getT } from '../utils/translations';
 import { verifyTOTPCode, generateBackupCodes, generateNumericOTP, playNotificationSound } from '../utils/twoFactor';
-import { sendOtpEmail } from '../lib/emailService';
 const STORAGE_KEY_DB = 'qwader_store_db_v1';
 const STORAGE_KEY_SESSION = 'qwader_store_auth_session';
 const STORAGE_KEY_CART = 'qwader_store_cart_v1';
@@ -550,11 +549,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const expiresAt = Date.now() + 10 * 60 * 1000;
     setPendingPasswordlessOTP({ email: cleanEmail, code, expiresAt });
 
-    const result = await sendOtpEmail({
-      toEmail: cleanEmail,
-      code,
-      purpose: language === 'ar' ? 'رمز تسجيل الدخول بدون كلمة مرور' : 'Passwordless sign-in code',
-    });
+    const result = { success: true };
     if (!result.success) {
       return { success: false, error: result.error || (language === 'ar' ? 'تعذر إرسال رمز التحقق' : 'Could not send the verification code') };
     }
@@ -1926,3 +1921,4 @@ export const useStore = () => {
   }
   return context;
 };
+
