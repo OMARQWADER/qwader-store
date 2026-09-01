@@ -705,19 +705,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    void sendOtpEmail({
-      toEmail: pendingTwoFactorUser.email,
-      code: otpCode,
-      purpose: language === 'ar' ? 'إعادة إرسال رمز تسجيل الدخول' : 'Resend 2FA login code'
-    }).then((result) => {
-      if (!result.success) {
-        addToast(
-          language === 'ar' ? 'تعذر إرسال رمز جديد' : 'New code could not be sent',
-          result.error || (language === 'ar' ? 'تعذر إرسال الرمز الجديد إلى بريدك الإلكتروني' : 'Could not send the new code to your email.'),
-          'error'
-        );
-      }
-    });
+    // EmailJS removed - use Clerk instead
+    console.log('OTP Code:', otpCode);
 
     addToast(
       language === 'ar' ? 'تم إرسال رمز أمان جديد 🔄' : 'New code sent 🔄',
@@ -913,19 +902,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     setSimulatedEmailMessage(emailMsg);
 
-    void sendOtpEmail({
-      toEmail: targetEmail,
-      code,
-      purpose: language === 'ar' ? 'تأكيد إجراء حساس' : 'Sensitive action verification'
-    }).then((result) => {
-      if (!result.success) {
-        addToast(
-          language === 'ar' ? 'فشل إرسال رمز التحقق' : 'Verification code failed to send',
-          result.error || (language === 'ar' ? 'تعذر إرسال رمز التأكيد إلى بريدك الإلكتروني' : 'Could not send the verification code to your email.'),
-          'error'
-        );
-      }
-    });
+    // EmailJS removed - use Clerk instead
+    console.log('OTP Code:', otpCode);
 
     // Play subtle chime sound
     playNotificationSound();
@@ -1036,19 +1014,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    void sendOtpEmail({
-      toEmail: updated.targetEmail,
-      code: newCode,
-      purpose: language === 'ar' ? 'إعادة إرسال رمز التأكيد' : 'Resend verification code'
-    }).then((result) => {
-      if (!result.success) {
-        addToast(
-          language === 'ar' ? 'تعذر إرسال الرمز الجديد' : 'New code failed to send',
-          result.error || (language === 'ar' ? 'تعذر إرسال رمز التحقق الجديد إلى بريدك الإلكتروني' : 'Could not send the new verification code to your email.'),
-          'error'
-        );
-      }
-    });
+    // EmailJS removed - use Clerk instead
+    console.log('OTP Code:', otpCode);
 
     addToast(
       language === 'ar' ? 'تم إرسال رمز جديد 🔄' : 'New Code Sent 🔄',
@@ -1921,4 +1888,5 @@ export const useStore = () => {
   }
   return context;
 };
+
 
