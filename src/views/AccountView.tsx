@@ -78,6 +78,7 @@ export const AccountView: React.FC = () => {
   const [profileCountryCode, setProfileCountryCode] = useState('+962');
   const [profilePromotionalEmails, setProfilePromotionalEmails] = useState(false);
   const [pendingGoogleUser, setPendingGoogleUser] = useState<{ email: string; authUid: string; avatar?: string } | null>(null);
+  const [pendingFacebookUser, setPendingFacebookUser] = useState<{ email: string; authUid: string; avatar?: string } | null>(null);
 
 
   // Profile Edit Inputs
@@ -201,6 +202,7 @@ export const AccountView: React.FC = () => {
       setProfileCountryCode('+962');
       setProfilePromotionalEmails(false);
       setPendingGoogleUser(null);
+      setPendingFacebookUser(null);
       setIsProfileModalOpen(true);
     } else if (!res.success && res.error) {
       setAuthError(res.error);
@@ -211,16 +213,20 @@ export const AccountView: React.FC = () => {
     setAuthError(language === 'ar' ? 'تم تعطيل تسجيل الدخول عبر Google في الوضع المحلي.' : 'Google sign-in is disabled in local-only mode.');
   };
 
+  const handleFacebookSignIn = async () => {
+    setAuthError(language === 'ar' ? 'تم تعطيل تسجيل الدخول عبر Facebook في الوضع المحلي.' : 'Facebook sign-in is disabled in local-only mode.');
+  };
+
   const handleProfileSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const result = createCustomerAccount({
       firstName: profileFirstName,
       lastName: profileLastName,
       phone: `${profileCountryCode} ${profilePhone}`,
-      email: pendingGoogleUser?.email || email,
+      email: pendingFacebookUser?.email || pendingGoogleUser?.email || email,
       promotionalEmails: profilePromotionalEmails,
-      authUid: pendingGoogleUser?.authUid,
-      avatar: pendingGoogleUser?.avatar,
+      authUid: pendingFacebookUser?.authUid || pendingGoogleUser?.authUid,
+      avatar: pendingFacebookUser?.avatar || pendingGoogleUser?.avatar,
     });
     if (!result.success) {
       setAuthError(result.error || '');
@@ -228,6 +234,7 @@ export const AccountView: React.FC = () => {
     }
     setIsProfileModalOpen(false);
     setPendingGoogleUser(null);
+    setPendingFacebookUser(null);
   };
 
   // Handle 2FA Login Completion
@@ -895,14 +902,24 @@ export const AccountView: React.FC = () => {
               <span className="absolute -top-2.5 start-1/2 -translate-x-1/2 bg-slate-900 px-3 text-[10px] text-slate-500">
                 {language === 'ar' ? 'أو' : 'OR'}
               </span>
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-3.5 text-xs font-bold text-white transition-all hover:bg-white/10"
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm font-black text-[#4285F4]">G</span>
-                {language === 'ar' ? 'تسجيل الدخول عبر Google' : 'Sign in with Google'}
-              </button>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-3.5 text-xs font-bold text-white transition-all hover:bg-white/10"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-sm font-black text-[#4285F4]">G</span>
+                  {language === 'ar' ? 'تسجيل الدخول عبر Google' : 'Sign in with Google'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFacebookSignIn}
+                  className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 py-3.5 text-xs font-bold text-white transition-all hover:bg-white/10"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1877F2] text-sm font-black text-white">f</span>
+                  {language === 'ar' ? 'تسجيل الدخول عبر Facebook' : 'Sign in with Facebook'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

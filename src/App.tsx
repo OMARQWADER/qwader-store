@@ -23,8 +23,8 @@ const PaymentMethodsView = lazy(() => import('./views/PaymentMethodsView').then(
 const AboutView = lazy(() => import('./views/AboutView').then(m => ({ default: m.AboutView })));
 const AdminDashboardView = lazy(() => import('./views/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
 const OrderTrackingView = lazy(() => import('./views/OrderTrackingView').then(m => ({ default: m.OrderTrackingView })));
-const LoginView = lazy(() => import('./views/LoginView').then(m => ({ default: m.LoginView })));
-const RegisterView = lazy(() => import('./views/RegisterView').then(m => ({ default: m.RegisterView })));
+const LoginView = lazy(() => import('./views/LoginView'));
+const RegisterView = lazy(() => import('./views/RegisterView'));
 
 import { MessageCircle, AlertTriangle } from 'lucide-react';
 
