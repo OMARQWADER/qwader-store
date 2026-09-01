@@ -705,7 +705,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    // EmailJS removed - use Clerk instead
+    // OTP sent via console log (dev mode)
     console.log('OTP Code:', otpCode);
 
     addToast(
@@ -902,7 +902,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     setSimulatedEmailMessage(emailMsg);
 
-    // EmailJS removed - use Clerk instead
+    // OTP sent via console log (dev mode)
     console.log('OTP Code:', otpCode);
 
     // Play subtle chime sound
@@ -1014,7 +1014,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    // EmailJS removed - use Clerk instead
+    // OTP sent via console log (dev mode)
     console.log('OTP Code:', otpCode);
 
     addToast(
