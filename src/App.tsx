@@ -9,7 +9,6 @@ import { TwoStepVerificationModal } from './components/common/TwoStepVerificatio
 import { ToastContainer } from './components/common/ToastContainer';
 
 import { HomeView } from './views/HomeView';
-import ClerkAuth from './components/ClerkAuth';
 
 const StoreView = lazy(() => import('./views/StoreView').then(m => ({ default: m.StoreView })));
 const ProductDetailView = lazy(() => import('./views/ProductDetailView').then(m => ({ default: m.ProductDetailView })));
@@ -130,7 +129,6 @@ const AppContent: React.FC = () => {
       )}
 
       <Navbar />
-      <ClerkAuth />
       <main className="flex-1 w-full pt-4 pb-16">
         <Suspense fallback={<RouteLoadingFallback />}>{renderView()}</Suspense>
       </main>
