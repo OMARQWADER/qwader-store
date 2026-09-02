@@ -175,17 +175,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [products, orders, users, reviews] = await Promise.all([
+        const [products, orders, users] = await Promise.all([
           api.getProducts().catch(() => INITIAL_STATE.products),
           api.getOrders().catch(() => INITIAL_STATE.orders),
           api.getUsers().catch(() => INITIAL_STATE.users),
-          // Reviews from API - we'll handle this separately
         ]);
 
-        // Get reviews from API (if available) or use empty array
         let reviewsData: Review[] = [];
         try {
-          // If we have products, get reviews for each
           if (products && products.length > 0) {
             const reviewPromises = products.map((p: any) => 
               api.getReviews(p.id).catch(() => [])
@@ -329,7 +326,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_CART, JSON.stringify(cart));
-      // Sync cart to API if user is logged in
       if (currentUser?.id) {
         api.updateCart(currentUser.id, cart).catch(console.error);
       }
@@ -364,7 +360,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       if (currentUser) {
         localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
-        // Sync user to API
         api.syncUser(currentUser).catch(console.error);
       } else {
         localStorage.removeItem(STORAGE_KEY_SESSION);
@@ -444,13 +439,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return `${priceJOD.toFixed(2)} ${t.jordanianCurrency}`;
   };
 
-  // Best Sellers Calculation
+  // Best Sellers Calculation - FIXED ✅
   const bestSellerProductIds = useMemo(() => {
     const countMap: Record<string, number> = {};
     
-    state.orders.forEach((order) => {
-      order.items.forEach((item) => {
-        countMap[item.productId] = (countMap[item.productId] || 0) + item.quantity;
+    // تأكد إن orders مصفوفة
+    const ordersArray = Array.isArray(state.orders) ? state.orders : [];
+    
+    ordersArray.forEach((order) => {
+      // تأكد إن items مصفوفة
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach((item) => {
+        countMap[item.productId] = (countMap[item.productId] || 0) + (item.quantity || 0);
       });
     });
 
@@ -465,8 +465,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .map(([id]) => id);
   }, [state.orders]);
 
+  // Unread Notifications Count - FIXED ✅
   const unreadNotificationsCount = useMemo(() => {
-    return state.notifications.filter(
+    const notifications = Array.isArray(state.notifications) ? state.notifications : [];
+    return notifications.filter(
       (n) => !n.isRead && (n.userId === 'all' || n.userId === currentUser?.id)
     ).length;
   }, [state.notifications, currentUser]);
