@@ -27,9 +27,11 @@ export default function LoginView() {
       import.meta.env.VITE_GOOGLE_CLIENT_ID ||
       "756502895226-cbkim0mrfonmoqtq1u471glc4likj3rd.apps.googleusercontent.com";
 
-    const redirectUri = \/api/auth/callback/google;
+    const redirectUri = `${window.location.origin}/api/auth/callback/google`;
 
-    const googleAuthUrl = https://accounts.google.com/o/oauth2/v2/auth?client_id=\&redirect_uri=\&response_type=code&scope=email%20profile&prompt=select_account;
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&response_type=code&scope=email%20profile&prompt=select_account`;
 
     window.location.href = googleAuthUrl;
   };
