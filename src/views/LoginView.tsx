@@ -8,7 +8,6 @@ export default function LoginView() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 1. تسجيل الدخول العادي بالبريد وكلمة المرور
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -23,14 +22,14 @@ export default function LoginView() {
     }
   };
 
-  // 2. تسجيل الدخول بواسطة Google OAuth
   const handleGoogleLogin = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "GOOGLE_CLIENT_ID_HERE";
-    const redirectUri = `${window.location.origin}/api/auth/callback/google`;
-    
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&response_type=code&scope=email%20profile&prompt=select_account`;
+    const clientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      "756502895226-cbkim0mrfonmoqtq1u471glc4likj3rd.apps.googleusercontent.com";
+
+    const redirectUri = \/api/auth/callback/google;
+
+    const googleAuthUrl = https://accounts.google.com/o/oauth2/v2/auth?client_id=\&redirect_uri=\&response_type=code&scope=email%20profile&prompt=select_account;
 
     window.location.href = googleAuthUrl;
   };
@@ -41,7 +40,6 @@ export default function LoginView() {
       
       {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
 
-      {/* زر تسجيل الدخول عبر Google */}
       <button
         onClick={handleGoogleLogin}
         type="button"
@@ -67,7 +65,6 @@ export default function LoginView() {
 
       <div style={{ textAlign: "center", margin: "15px 0", color: "#888" }}>أو</div>
 
-      {/* نموذج الدخول العادي */}
       <form onSubmit={handleSubmit}>
         <input
           type="email"
