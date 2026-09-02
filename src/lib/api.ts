@@ -1,6 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// دالة مساعدة لتحويل أي استجابة إلى مصفوفة
+// ✅ دالة مساعدة لتحويل أي استجابة إلى مصفوفة
 const ensureArray = (data: any): any[] => {
   if (!data) return [];
   if (Array.isArray(data)) return data;
