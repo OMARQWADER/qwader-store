@@ -425,7 +425,7 @@ app.post('/api/wishlist/:userId', async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+module.exports = app, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Database: ${process.env.DATABASE_URL ? '✅ Connected' : '❌ Missing DATABASE_URL'}`);
 });
