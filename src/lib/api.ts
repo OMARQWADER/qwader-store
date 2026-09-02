@@ -1,8 +1,19 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// دالة مساعدة لتحويل أي استجابة إلى مصفوفة
+const ensureArray = (data: any): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'object') return Object.values(data);
+  return [];
+};
+
 export const api = {
   // Users
-  getUsers: () => fetch(`${API_URL}/users`).then(r => r.json()),
+  getUsers: async () => {
+    const data = await fetch(`${API_URL}/users`).then(r => r.json());
+    return ensureArray(data);
+  },
   getUser: (id: string) => fetch(`${API_URL}/users/${id}`).then(r => r.json()),
   syncUser: (user: any) => fetch(`${API_URL}/users/sync`, {
     method: 'POST',
@@ -19,7 +30,10 @@ export const api = {
   }).then(r => r.json()),
   
   // Products
-  getProducts: () => fetch(`${API_URL}/products`).then(r => r.json()),
+  getProducts: async () => {
+    const data = await fetch(`${API_URL}/products`).then(r => r.json());
+    return ensureArray(data);
+  },
   getProduct: (id: string) => fetch(`${API_URL}/products/${id}`).then(r => r.json()),
   createProduct: (product: any) => fetch(`${API_URL}/products`, {
     method: 'POST',
@@ -41,8 +55,14 @@ export const api = {
   }).then(r => r.json()),
   
   // Orders
-  getOrders: () => fetch(`${API_URL}/orders`).then(r => r.json()),
-  getOrdersByUser: (userId: string) => fetch(`${API_URL}/orders/user/${userId}`).then(r => r.json()),
+  getOrders: async () => {
+    const data = await fetch(`${API_URL}/orders`).then(r => r.json());
+    return ensureArray(data);
+  },
+  getOrdersByUser: async (userId: string) => {
+    const data = await fetch(`${API_URL}/orders/user/${userId}`).then(r => r.json());
+    return ensureArray(data);
+  },
   createOrder: (order: any) => fetch(`${API_URL}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -55,7 +75,10 @@ export const api = {
   }).then(r => r.json()),
   
   // Reviews
-  getReviews: (productId: string) => fetch(`${API_URL}/reviews/product/${productId}`).then(r => r.json()),
+  getReviews: async (productId: string) => {
+    const data = await fetch(`${API_URL}/reviews/product/${productId}`).then(r => r.json());
+    return ensureArray(data);
+  },
   addReview: (review: any) => fetch(`${API_URL}/reviews`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
