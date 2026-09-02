@@ -424,8 +424,6 @@ app.post('/api/wishlist/:userId', async (req, res) => {
   }
 });
 
-// Start server
+// ==================== START SERVER ====================
+// For Vercel serverless deployment
 module.exports = app;
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Database: ${process.env.DATABASE_URL ? '✅ Connected' : '❌ Missing DATABASE_URL'}`);
-});
