@@ -23,7 +23,8 @@ import {
 import { INITIAL_STATE } from '../data/initialData';
 import { getT } from '../utils/translations';
 import { verifyTOTPCode, generateBackupCodes, generateNumericOTP, playNotificationSound } from '../utils/twoFactor';
-const STORAGE_KEY_DB = 'qwader_store_db_v1';
+import { api } from '../lib/api';
+
 const STORAGE_KEY_SESSION = 'qwader_store_auth_session';
 const STORAGE_KEY_CART = 'qwader_store_cart_v1';
 const STORAGE_KEY_WISHLIST = 'qwader_store_wishlist_v1';
@@ -61,10 +62,7 @@ interface StoreContextType {
   unreadNotificationsCount: number;
   isOrdersLoading: boolean;
   
-  // Navigation
   navigateTo: (route: string) => void;
-  
-  // Auth & 2FA
   login: (email: string) => Promise<{ success: boolean; requires2FA?: boolean; method?: 'authenticator' | 'whatsapp' | 'sms' | 'email'; error?: string }>;
   completePasswordlessLogin: (email: string, code: string) => { success: boolean; requiresProfile?: boolean; error?: string };
   createCustomerAccount: (data: { firstName: string; lastName: string; phone: string; email: string; promotionalEmails: boolean; authUid?: string; avatar?: string }) => { success: boolean; error?: string };
@@ -80,8 +78,6 @@ interface StoreContextType {
   enableTwoFactor: (method: 'authenticator' | 'whatsapp' | 'sms' | 'email', secret: string, code: string, expectedCode: string, backupCodes: string[], phone?: string) => { success: boolean; error?: string };
   disableTwoFactor: () => { success: boolean; error?: string };
   regenerateBackupCodes: () => { success: boolean; backupCodes?: string[]; error?: string };
-
-  // Step-Up Two-Step Sensitive Verification
   requestSensitiveActionVerification: (options: {
     actionType: SensitiveActionType;
     titleAr: string;
@@ -99,13 +95,9 @@ interface StoreContextType {
   resendSensitiveActionCode: (channel?: 'email' | 'sms' | 'whatsapp') => void;
   clearSimulatedEmailMessage: () => void;
   lockAdminSession: () => void;
-  
-  // Promo codes
   addPromoCode: (promo: { code: string; discountPercent?: number; discountFixedJOD?: number }) => void;
   togglePromoCode: (code: string) => void;
   deletePromoCode: (code: string) => void;
-  
-  // Cart
   addToCart: (product: Product, quantity?: number) => void;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
@@ -113,16 +105,12 @@ interface StoreContextType {
   setIsCartOpen: (open: boolean) => void;
   applyPromoCode: (code: string) => { success: boolean; message: string };
   removePromoCode: () => void;
-  
-  // Wishlist & Compare
   toggleWishlist: (productId: string) => void;
   isInWishlist: (productId: string) => boolean;
   toggleCompare: (productId: string) => boolean;
   isInCompare: (productId: string) => boolean;
   removeFromCompare: (productId: string) => void;
   clearCompare: () => void;
-  
-  // Orders
   createOrder: (data: {
     customerName: string;
     customerPhone: string;
@@ -142,7 +130,7 @@ interface StoreContextType {
     paymentProofFileSize?: number;
     paymentReference?: string;
     notes?: string;
-  }) => Order;
+  }) => Promise<Order>;
   updateOrderStatus: (
     orderId: string,
     status: OrderStatus,
@@ -151,23 +139,15 @@ interface StoreContextType {
     digitalDeliveries?: Order['digitalDeliveries']
   ) => void;
   addPaymentProofToOrder: (orderId: string, referenceNumber: string) => void;
-  
-  // Products
-  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'rating' | 'reviewsCount'>) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (productId: string) => void;
-  updateProductStock: (productId: string, newStock: number) => void;
-  
-  // Reviews
-  addReview: (productId: string, rating: number, comment: string) => { success: boolean; message?: string };
-  deleteReview: (reviewId: string) => void;
-  
-  // Support
+  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'rating' | 'reviewsCount'>) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
+  updateProductStock: (productId: string, newStock: number) => Promise<void>;
+  addReview: (productId: string, rating: number, comment: string) => Promise<{ success: boolean; message?: string }>;
+  deleteReview: (reviewId: string) => Promise<void>;
   createSupportTicket: (subject: string, message: string, orderNumber?: string) => string;
   sendSupportMessage: (ticketId: string, message: string) => void;
   updateTicketStatus: (ticketId: string, status: 'open' | 'closed' | 'resolved') => void;
-  
-  // Settings & System
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
   exportBackupJson: () => void;
   importBackupJson: (jsonData: string) => { success: boolean; error?: string };
@@ -175,92 +155,75 @@ interface StoreContextType {
   importDataJson: (jsonData: string) => { success: boolean; error?: string };
   resetToFactoryDefaults: () => void;
   resetToFactoryData: () => void;
-  
-  // Notifications
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
-  
-  // Toasts
   addToast: (title: string, message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
   removeToast: (id: string) => void;
-  
-  // Customization
   setLanguage: (lang: Language) => void;
   setTheme: (theme: ThemeMode) => void;
   setCurrency: (curr: Currency) => void;
-  
-  // Helpers
   formatPrice: (priceJOD: number, priceUSD?: number) => string;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Load State from localStorage
-  const [state, setState] = useState<StoreState>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_DB);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return {
+  const [state, setState] = useState<StoreState>(INITIAL_STATE);
+  const [loading, setLoading] = useState(true);
+
+  // Load data from API on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [products, orders, users, reviews] = await Promise.all([
+          api.getProducts().catch(() => INITIAL_STATE.products),
+          api.getOrders().catch(() => INITIAL_STATE.orders),
+          api.getUsers().catch(() => INITIAL_STATE.users),
+          // Reviews from API - we'll handle this separately
+        ]);
+
+        // Get reviews from API (if available) or use empty array
+        let reviewsData: Review[] = [];
+        try {
+          // If we have products, get reviews for each
+          if (products && products.length > 0) {
+            const reviewPromises = products.map((p: any) => 
+              api.getReviews(p.id).catch(() => [])
+            );
+            const allReviews = await Promise.all(reviewPromises);
+            reviewsData = allReviews.flat();
+          }
+        } catch (e) {
+          console.warn('Failed to load reviews:', e);
+        }
+
+        setState({
           ...INITIAL_STATE,
-          ...parsed,
-          orders: Array.isArray(parsed.orders) ? parsed.orders : INITIAL_STATE.orders,
-          products: Array.isArray(parsed.products) ? parsed.products : INITIAL_STATE.products,
-          users: Array.isArray(parsed.users) ? parsed.users : INITIAL_STATE.users,
-          reviews: Array.isArray(parsed.reviews) ? parsed.reviews : INITIAL_STATE.reviews,
-          supportTickets: Array.isArray(parsed.supportTickets) ? parsed.supportTickets : INITIAL_STATE.supportTickets,
-          notifications: Array.isArray(parsed.notifications) ? parsed.notifications : INITIAL_STATE.notifications,
-          activityLogs: Array.isArray(parsed.activityLogs) ? parsed.activityLogs : INITIAL_STATE.activityLogs,
-          promoCodes: Array.isArray(parsed.promoCodes) ? parsed.promoCodes : INITIAL_STATE.promoCodes,
-          settings: {
-            ...INITIAL_STATE.settings,
-            ...(parsed.settings || {}),
-            socialLinks: {
-              ...INITIAL_STATE.settings.socialLinks,
-              ...((parsed.settings && parsed.settings.socialLinks) || {}),
-            },
-            branding: {
-              ...INITIAL_STATE.settings.branding,
-              ...((parsed.settings && parsed.settings.branding) || {}),
-            },
-            fulfillment: {
-              ...INITIAL_STATE.settings.fulfillment,
-              ...((parsed.settings && parsed.settings.fulfillment) || {}),
-              governorates: (parsed.settings?.fulfillment?.governorates && Array.isArray(parsed.settings.fulfillment.governorates) && parsed.settings.fulfillment.governorates.length > 0)
-                ? parsed.settings.fulfillment.governorates
-                : INITIAL_STATE.settings.fulfillment.governorates,
-              deliveryCompanies: (parsed.settings?.fulfillment?.deliveryCompanies && Array.isArray(parsed.settings.fulfillment.deliveryCompanies) && parsed.settings.fulfillment.deliveryCompanies.length > 0)
-                ? parsed.settings.fulfillment.deliveryCompanies
-                : INITIAL_STATE.settings.fulfillment.deliveryCompanies,
-            },
-          },
-        };
+          products: products || INITIAL_STATE.products,
+          orders: orders || INITIAL_STATE.orders,
+          users: users || INITIAL_STATE.users,
+          reviews: reviewsData || INITIAL_STATE.reviews,
+        });
+      } catch (error) {
+        console.error('Failed to load data from API:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error('Failed to load store database:', e);
-    }
-      return INITIAL_STATE;
-  });
+    };
+
+    loadData();
+  }, []);
 
   // Current Session User
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SESSION);
       if (saved) {
-        const savedSession = JSON.parse(saved) as Partial<User>;
-        const canonicalUser = state.users.find(
-          (user) => user.id === savedSession.id && user.email.toLowerCase() === savedSession.email?.toLowerCase()
-        );
-        if (canonicalUser) {
-          return canonicalUser;
-        }
-        localStorage.removeItem(STORAGE_KEY_SESSION);
+        return JSON.parse(saved);
       }
     } catch (e) {
       console.error('Failed to load session:', e);
     }
-    // Default to null (visitor/guest) on fresh start
     return null;
   });
 
@@ -287,7 +250,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (e) {
       console.error('Failed to load wishlist:', e);
     }
-    return ['prod-ea-fc25'];
+    return [];
   });
 
   // Compare List
@@ -323,8 +286,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent?: number; discountFixedJOD?: number } | null>(null);
   const [pendingTwoFactorUser, setPendingTwoFactorUser] = useState<User | null>(null);
-
-  // Sensitive Action Two-Step Verification State
   const [activeSensitiveChallenge, setActiveSensitiveChallenge] = useState<SensitiveVerificationChallenge | null>(null);
   const [simulatedEmailMessage, setSimulatedEmailMessage] = useState<SimulatedEmailMessage | null>(null);
   const [adminVerifiedUntil, setAdminVerifiedUntil] = useState<number>(0);
@@ -334,6 +295,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     expiresAt: number;
   } | null>(null);
   const [pending2FALoginOTP, setPending2FALoginOTP] = useState<string | null>(null);
+  const [isOrdersLoading, setIsOrdersLoading] = useState<boolean>(false);
 
   const isAdminSessionVerified = useMemo(() => {
     if (currentUser && (currentUser.role === 'owner' || currentUser.role === 'staff')) {
@@ -348,7 +310,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   useEffect(() => {
-    console.count('[StoreContext] hash listener effect');
     const handleHashChange = () => {
       const hash = window.location.hash || '#home';
       setCurrentRoute(hash);
@@ -364,57 +325,33 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     window.location.hash = route.startsWith('#') ? route : `#${route}`;
   };
 
-  // Sync state to localStorage
-  useEffect(() => {
-    console.count('[StoreContext] state persistence effect');
-    const serializedFullState = JSON.stringify(state);
-    console.log('[StoreContext] full state size:', serializedFullState.length);
-    const stateForStorage = {
-      ...state,
-      users: [],
-      orders: [],
-    };
-    const serializedState = JSON.stringify(stateForStorage);
-    console.log('[StoreContext] state size for localStorage:', serializedState.length);
-    const saveTimer = window.setTimeout(() => {
-      console.time('[StoreContext] state persistence');
-      try {
-        localStorage.setItem(STORAGE_KEY_DB, serializedState);
-      } catch (e) {
-        console.error('Failed to save store db to localStorage:', e);
-      } finally {
-        console.timeEnd('[StoreContext] state persistence');
-      }
-    }, 1000);
-
-    return () => window.clearTimeout(saveTimer);
-  }, [state]);
-
-  const [isOrdersLoading, setIsOrdersLoading] = useState<boolean>(false);
-
   // Sync cart to localStorage
   useEffect(() => {
-    console.count('[StoreContext] cart persistence effect');
     try {
       localStorage.setItem(STORAGE_KEY_CART, JSON.stringify(cart));
+      // Sync cart to API if user is logged in
+      if (currentUser?.id) {
+        api.updateCart(currentUser.id, cart).catch(console.error);
+      }
     } catch (e) {
-      console.error('Failed to save cart to localStorage:', e);
+      console.error('Failed to save cart:', e);
     }
-  }, [cart]);
+  }, [cart, currentUser]);
 
   // Sync wishlist
   useEffect(() => {
-    console.count('[StoreContext] wishlist persistence effect');
     try {
       localStorage.setItem(STORAGE_KEY_WISHLIST, JSON.stringify(wishlist));
+      if (currentUser?.id) {
+        api.updateWishlist(currentUser.id, wishlist).catch(console.error);
+      }
     } catch (e) {
       console.error('Failed to save wishlist:', e);
     }
-  }, [wishlist]);
+  }, [wishlist, currentUser]);
 
   // Sync compare
   useEffect(() => {
-    console.count('[StoreContext] compare persistence effect');
     try {
       localStorage.setItem(STORAGE_KEY_COMPARE, JSON.stringify(compareList));
     } catch (e) {
@@ -424,10 +361,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Sync session
   useEffect(() => {
-    console.count('[StoreContext] session persistence effect');
     try {
       if (currentUser) {
         localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        // Sync user to API
+        api.syncUser(currentUser).catch(console.error);
       } else {
         localStorage.removeItem(STORAGE_KEY_SESSION);
       }
@@ -445,7 +383,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   useEffect(() => {
-    console.count('[StoreContext] language effect');
     document.documentElement.lang = language;
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
@@ -474,7 +411,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   useEffect(() => {
-    console.count('[StoreContext] theme effect');
     setTheme(theme);
   }, [theme]);
 
@@ -508,18 +444,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return `${priceJOD.toFixed(2)} ${t.jordanianCurrency}`;
   };
 
-  // Best Sellers Calculation: dynamically counts sales in orders
+  // Best Sellers Calculation
   const bestSellerProductIds = useMemo(() => {
     const countMap: Record<string, number> = {};
     
-    // Seed counts from initial sales
     state.orders.forEach((order) => {
       order.items.forEach((item) => {
         countMap[item.productId] = (countMap[item.productId] || 0) + item.quantity;
       });
     });
 
-    // Add baseline counts so initial products shine
     countMap['prod-ea-fc25'] = (countMap['prod-ea-fc25'] || 0) + 42;
     countMap['prod-psplus-deluxe-12m'] = (countMap['prod-psplus-deluxe-12m'] || 0) + 36;
     countMap['prod-psn-50-us'] = (countMap['prod-psn-50-us'] || 0) + 29;
@@ -531,14 +465,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .map(([id]) => id);
   }, [state.orders]);
 
-  // Unread Notifications Count for current user
   const unreadNotificationsCount = useMemo(() => {
     return state.notifications.filter(
       (n) => !n.isRead && (n.userId === 'all' || n.userId === currentUser?.id)
     ).length;
   }, [state.notifications, currentUser]);
 
-  // Auth & 2FA Methods
+  // Auth Methods
   const requestPasswordlessOTP = async (email: string) => {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
@@ -549,10 +482,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const expiresAt = Date.now() + 10 * 60 * 1000;
     setPendingPasswordlessOTP({ email: cleanEmail, code, expiresAt });
 
-    const result = { success: true };
-    if (!result.success) {
-      return { success: false, error: result.error || (language === 'ar' ? 'تعذر إرسال رمز التحقق' : 'Could not send the verification code') };
-    }
     addToast(
       language === 'ar' ? 'تم إرسال رمز التحقق' : 'Verification code sent',
       language === 'ar' ? `تفقد بريدك الإلكتروني: ${cleanEmail}` : `Check your inbox at ${cleanEmail}`,
@@ -584,7 +513,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const signInCustomer = (user: User) => {
     setCurrentUser(user);
-    addToast(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Signed in successfully', language === 'ar' ? `أهلاً بك ${user.name}` : `Welcome ${user.name}`, 'success');
+    addToast(
+      language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Signed in successfully',
+      language === 'ar' ? `أهلاً بك ${user.name}` : `Welcome ${user.name}`,
+      'success'
+    );
   };
 
   const createCustomerAccount = (data: { firstName: string; lastName: string; phone: string; email: string; promotionalEmails: boolean; authUid?: string; avatar?: string }) => {
@@ -625,6 +558,51 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return { success: false, error: language === 'ar' ? 'تم إلغاء تسجيل الدخول الإداري في الوضع المحلي' : 'Admin sign-in is disabled in local-only mode' };
   };
 
+  const updateUserProfile = (data: Partial<User>) => {
+    if (!currentUser) return;
+    const updatedUser: User = {
+      ...currentUser,
+      ...data,
+    };
+
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === currentUser.id ? updatedUser : u)),
+    }));
+
+    setCurrentUser(updatedUser);
+    addToast(
+      language === 'ar' ? 'تم تحديث الملف الشخصي' : 'Profile Updated',
+      language === 'ar' ? 'تم حفظ التغييرات بنجاح' : 'Your changes have been saved',
+      'success'
+    );
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    addToast(
+      language === 'ar' ? 'تم تسجيل الخروج' : 'Signed out',
+      language === 'ar' ? 'نتشرف بزيارتك القادمة دائماً يا غالي' : 'See you next time!',
+      'info'
+    );
+  };
+
+  const updateUserRole = (userId: string, newRole: UserRole) => {
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)),
+    }));
+    if (currentUser?.id === userId) {
+      setCurrentUser((prev) => prev ? { ...prev, role: newRole } : null);
+    }
+    addToast(
+      language === 'ar' ? 'تحديث الصلاحية' : 'Role Updated',
+      language === 'ar' ? `تم تغيير صلاحية المستخدم بنجاح` : `User role changed to ${newRole}`,
+      'success'
+    );
+  };
+
+  // 2FA Methods (kept as is from original)
   const completeTwoFactorLogin = (code: string) => {
     if (!pendingTwoFactorUser) {
       return { success: false, error: language === 'ar' ? 'لا يوجد جلسة تحقق معلقة' : 'No pending 2FA session' };
@@ -633,7 +611,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const user = pendingTwoFactorUser;
     const cleanCode = code.trim().toUpperCase();
 
-    // Check 1: One-time Backup Recovery Code (e.g. QW9X-4421)
     if (user.twoFactorBackupCodes && user.twoFactorBackupCodes.includes(cleanCode)) {
       const remainingCodes = user.twoFactorBackupCodes.filter((c) => c !== cleanCode);
       const updatedUser: User = {
@@ -658,7 +635,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: true };
     }
 
-    // Check 2: Dynamic Email/SMS/WhatsApp OTP or TOTP code
     const isEmailOrDirectMatch = pending2FALoginOTP && cleanCode === pending2FALoginOTP;
     const isTOTPValid = user.twoFactorSecret ? verifyTOTPCode(user.twoFactorSecret, cleanCode) : false;
     if (isEmailOrDirectMatch || isTOTPValid) {
@@ -678,6 +654,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       success: false,
       error: language === 'ar' ? 'رمز التحقق غير صحيح أو انتهت صلاحيته' : 'Invalid or expired verification code',
     };
+  };
+
+  const cancelTwoFactorLogin = () => {
+    setPendingTwoFactorUser(null);
+    setPending2FALoginOTP(null);
+    setSimulatedEmailMessage(null);
   };
 
   const resendTwoFactorLoginOTP = () => {
@@ -705,7 +687,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    // OTP sent via console log (dev mode)
     console.log('OTP Code:', otpCode);
 
     addToast(
@@ -714,12 +695,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       'info'
     );
     return { success: true };
-  };
-
-  const cancelTwoFactorLogin = () => {
-    setPendingTwoFactorUser(null);
-    setPending2FALoginOTP(null);
-    setSimulatedEmailMessage(null);
   };
 
   const enableTwoFactor = (
@@ -849,7 +824,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return { success: true, backupCodes: newCodes };
   };
 
-  // Step-Up Two-Step Verification for Sensitive Actions
+  // Sensitive Action Verification (kept from original)
   const requestSensitiveActionVerification = (options: {
     actionType: SensitiveActionType;
     titleAr: string;
@@ -863,7 +838,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     onSuccess: () => void;
   }) => {
     const code = generateNumericOTP(6);
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const expiresAt = Date.now() + 5 * 60 * 1000;
     const targetEmail = options.targetEmail || currentUser?.email || 'gmail';
     const targetPhone = options.targetPhone || currentUser?.phone || '+962 7 9000 0000';
     const channel = options.deliveryChannel || 'email';
@@ -887,7 +862,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setActiveSensitiveChallenge(challenge);
 
-    // Trigger simulated incoming email / notification banner
     const emailMsg: SimulatedEmailMessage = {
       id: `sim-mail-${Date.now()}`,
       toEmail: targetEmail,
@@ -902,13 +876,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     setSimulatedEmailMessage(emailMsg);
 
-    // OTP sent via console log (dev mode)
-    console.log('OTP Code:', otpCode);
+    console.log('OTP Code:', code);
 
-    // Play subtle chime sound
     playNotificationSound();
 
-    // Log to in-app notification center as well
     const notifItem: NotificationItem = {
       id: `notif-sec-${Date.now()}`,
       userId: currentUser?.id || 'all',
@@ -958,9 +929,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
     }
 
-    // Success!
     if (activeSensitiveChallenge.actionType === 'admin_access') {
-      setAdminVerifiedUntil(Date.now() + 30 * 60 * 1000); // 30 minutes validity
+      setAdminVerifiedUntil(Date.now() + 30 * 60 * 1000);
     }
 
     const callback = activeSensitiveChallenge.onSuccess;
@@ -1014,8 +984,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    // OTP sent via console log (dev mode)
-    console.log('OTP Code:', otpCode);
+    console.log('OTP Code:', newCode);
 
     addToast(
       language === 'ar' ? 'تم إرسال رمز جديد 🔄' : 'New Code Sent 🔄',
@@ -1037,47 +1006,50 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
-  const updateUserProfile = (data: Partial<User>) => {
-    if (!currentUser) return;
-    const updatedUser: User = {
-      ...currentUser,
-      ...data,
-    };
-
+  // Promo Codes
+  const addPromoCode = (promo: { code: string; discountPercent?: number; discountFixedJOD?: number }) => {
+    const cleanCode = promo.code.trim().toUpperCase();
+    if (!cleanCode) return;
     setState((prev) => ({
       ...prev,
-      users: prev.users.map((u) => (u.id === currentUser.id ? updatedUser : u)),
+      promoCodes: [
+        ...prev.promoCodes.filter((p) => p.code.toUpperCase() !== cleanCode),
+        {
+          code: cleanCode,
+          discountPercent: promo.discountPercent,
+          discountFixedJOD: promo.discountFixedJOD,
+          active: true,
+        },
+      ],
     }));
-
-    setCurrentUser(updatedUser);
     addToast(
-      language === 'ar' ? 'تم تحديث الملف الشخصي' : 'Profile Updated',
-      language === 'ar' ? 'تم حفظ التغييرات بنجاح' : 'Your changes have been saved',
+      language === 'ar' ? 'تمت إضافة كود الخصم 🏷️' : 'Promo Code Added 🏷️',
+      language === 'ar' ? `الكود ${cleanCode} جاهز للاستخدام الآن` : `Promo code ${cleanCode} is now active`,
       'success'
     );
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    addToast(
-      language === 'ar' ? 'تم تسجيل الخروج' : 'Signed out',
-      language === 'ar' ? 'نتشرف بزيارتك القادمة دائماً يا غالي' : 'See you next time!',
-      'info'
-    );
-  };
-
-  const updateUserRole = (userId: string, newRole: UserRole) => {
+  const togglePromoCode = (code: string) => {
     setState((prev) => ({
       ...prev,
-      users: prev.users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)),
+      promoCodes: prev.promoCodes.map((p) =>
+        p.code.toUpperCase() === code.toUpperCase() ? { ...p, active: !p.active } : p
+      ),
     }));
-    if (currentUser?.id === userId) {
-      setCurrentUser((prev) => prev ? { ...prev, role: newRole } : null);
+  };
+
+  const deletePromoCode = (code: string) => {
+    setState((prev) => ({
+      ...prev,
+      promoCodes: prev.promoCodes.filter((p) => p.code.toUpperCase() !== code.toUpperCase()),
+    }));
+    if (appliedPromo?.code.toUpperCase() === code.toUpperCase()) {
+      setAppliedPromo(null);
     }
     addToast(
-      language === 'ar' ? 'تحديث الصلاحية' : 'Role Updated',
-      language === 'ar' ? `تم تغيير صلاحية المستخدم بنجاح` : `User role changed to ${newRole}`,
-      'success'
+      language === 'ar' ? 'تم حذف كود الخصم' : 'Promo Code Deleted',
+      language === 'ar' ? `تم حذف الكود ${code} من النظام` : `Promo code ${code} was removed`,
+      'info'
     );
   };
 
@@ -1160,52 +1132,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setAppliedPromo(null);
   };
 
-  const addPromoCode = (promo: { code: string; discountPercent?: number; discountFixedJOD?: number }) => {
-    const cleanCode = promo.code.trim().toUpperCase();
-    if (!cleanCode) return;
-    setState((prev) => ({
-      ...prev,
-      promoCodes: [
-        ...prev.promoCodes.filter((p) => p.code.toUpperCase() !== cleanCode),
-        {
-          code: cleanCode,
-          discountPercent: promo.discountPercent,
-          discountFixedJOD: promo.discountFixedJOD,
-          active: true,
-        },
-      ],
-    }));
-    addToast(
-      language === 'ar' ? 'تمت إضافة كود الخصم 🏷️' : 'Promo Code Added 🏷️',
-      language === 'ar' ? `الكود ${cleanCode} جاهز للاستخدام الآن` : `Promo code ${cleanCode} is now active`,
-      'success'
-    );
-  };
-
-  const togglePromoCode = (code: string) => {
-    setState((prev) => ({
-      ...prev,
-      promoCodes: prev.promoCodes.map((p) =>
-        p.code.toUpperCase() === code.toUpperCase() ? { ...p, active: !p.active } : p
-      ),
-    }));
-  };
-
-  const deletePromoCode = (code: string) => {
-    setState((prev) => ({
-      ...prev,
-      promoCodes: prev.promoCodes.filter((p) => p.code.toUpperCase() !== code.toUpperCase()),
-    }));
-    if (appliedPromo?.code.toUpperCase() === code.toUpperCase()) {
-      setAppliedPromo(null);
-    }
-    addToast(
-      language === 'ar' ? 'تم حذف كود الخصم' : 'Promo Code Deleted',
-      language === 'ar' ? `تم حذف الكود ${code} من النظام` : `Promo code ${code} was removed`,
-      'info'
-    );
-  };
-
   // Wishlist
   const toggleWishlist = (productId: string) => {
     setWishlist((prev) => {
@@ -1259,7 +1185,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const clearCompare = () => setCompareList([]);
 
   // Orders
-  const createOrder = (data: {
+  const createOrder = async (data: {
     customerName: string;
     customerPhone: string;
     customerEmail: string;
@@ -1278,7 +1204,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     paymentProofFileSize?: number;
     paymentReference?: string;
     notes?: string;
-  }): Order => {
+  }): Promise<Order> => {
     const subtotalJOD = cart.reduce((acc, item) => acc + item.product.priceJOD * item.quantity, 0);
     const subtotalUSD = cart.reduce((acc, item) => acc + item.product.priceUSD * item.quantity, 0);
 
@@ -1313,85 +1239,49 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       image: item.product.image,
     }));
 
-    const newOrder: Order = {
-      id: `ord-${Date.now()}`,
-      orderNumber,
-      userId: currentUser ? currentUser.id : `guest-${Date.now()}`,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone,
-      customerEmail: data.customerEmail,
-      preferredDeliveryMethod: data.preferredDeliveryMethod,
-      fulfillmentType: data.fulfillmentType || 'pickup',
-      shippingGovernorate: data.shippingGovernorate,
-      shippingAddress: data.shippingAddress,
-      shippingNotes: data.shippingNotes,
-      shippingCostJOD,
-      shippingCostUSD,
-      deliveryCompanyId: data.deliveryCompanyId,
-      deliveryCompanyName: data.deliveryCompanyName,
-      paymentMethod: data.paymentMethod,
-      paymentProofImage: data.paymentProofImage,
-      paymentProofFileName: data.paymentProofFileName,
-      paymentProofFileSize: data.paymentProofFileSize,
-      paymentReference: data.paymentReference,
-      items: orderItems,
-      subtotalJOD,
-      subtotalUSD,
-      discountJOD,
-      discountUSD,
-      totalJOD,
-      totalUSD,
-      appliedPromoCode: appliedPromo?.code,
-      notes: data.notes,
-      status: 'pending_payment',
-      timeline: [
-        {
-          status: 'pending_payment',
-          timestamp: new Date().toISOString(),
-          noteAr: 'تم تسجيل الطلب بنجاح بانتظار تحويل الدفعة',
-          noteEn: 'Order placed, awaiting payment confirmation',
-        },
-      ],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const newOrder = await api.createOrder({
+        user_id: currentUser ? currentUser.id : `guest-${Date.now()}`,
+        order_number: orderNumber,
+        items: orderItems,
+        subtotal_jod: subtotalJOD,
+        subtotal_usd: subtotalUSD,
+        discount_jod: discountJOD,
+        discount_usd: discountUSD,
+        shipping_cost_jod: shippingCostJOD,
+        shipping_cost_usd: shippingCostUSD,
+        total_jod: totalJOD,
+        total_usd: totalUSD,
+        payment_method: data.paymentMethod,
+        status: 'pending_payment',
+        customer_name: data.customerName,
+        customer_phone: data.customerPhone,
+        customer_email: data.customerEmail,
+        shipping_address: data.shippingAddress || '',
+        shipping_notes: data.shippingNotes || ''
+      });
 
-    // Add order to state without artificial stock deduction
-    setState((prev) => {
-      const newNotif: NotificationItem = {
-        id: `notif-${Date.now()}`,
-        userId: newOrder.userId,
-        titleAr: `تم استلام طلبك #${orderNumber} بنجاح ⚡`,
-        titleEn: `Order request received #${orderNumber} ⚡`,
-        messageAr: `طلبك بقيمة ${totalJOD.toFixed(2)} د.أ بانتظار تحويل الدفعة عبر ${data.paymentMethod === 'cliq' ? 'كليك (CliQ)' : 'التحويل البنكي'} لشراء وتجهيز طلبك فوراً.`,
-        messageEn: `Order request of ${totalJOD.toFixed(2)} JOD awaiting payment confirmation to process immediately.`,
-        type: 'order',
-        linkHash: '#orders',
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      return {
+      setState((prev) => ({
         ...prev,
-        orders: [newOrder, ...prev.orders],
-        notifications: [newNotif, ...prev.notifications],
-        activityLogs: [
-          {
-            id: `act-${Date.now()}`,
-            userId: newOrder.userId,
-            userName: data.customerName,
-            userRole: currentUser?.role || 'customer',
-            action: 'طلب شراء جديد (عند الطلب)',
-            details: `طلب رقم ${orderNumber} بمبلغ ${totalJOD.toFixed(2)} د.أ`,
-            timestamp: new Date().toISOString(),
-          },
-          ...prev.activityLogs,
-        ],
-      };
-    });
+        orders: [newOrder, ...prev.orders]
+      }));
 
-    clearCart();
-    return newOrder;
+      clearCart();
+      addToast(
+        language === 'ar' ? 'تم إنشاء الطلب بنجاح ✅' : 'Order created successfully ✅',
+        language === 'ar' ? `رقم الطلب: ${orderNumber}` : `Order #: ${orderNumber}`,
+        'success'
+      );
+
+      return newOrder;
+    } catch (err: any) {
+      addToast(
+        language === 'ar' ? 'خطأ في إنشاء الطلب ❌' : 'Error creating order ❌',
+        err.message || 'Unknown error',
+        'error'
+      );
+      throw err;
+    }
   };
 
   const updateOrderStatus = (
@@ -1457,157 +1347,212 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   // Product Management
-  const addProduct = (productData: Omit<Product, 'id' | 'createdAt' | 'rating' | 'reviewsCount'>) => {
-    const newProduct: Product = {
-      ...productData,
-      id: `prod-${Date.now()}`,
-      rating: 5.0,
-      reviewsCount: 0,
-      createdAt: new Date().toISOString(),
-    };
-
-    setState((prev) => ({
-      ...prev,
-      products: [newProduct, ...prev.products],
-      activityLogs: [
-        {
-          id: `act-${Date.now()}`,
-          userId: currentUser?.id || 'admin',
-          userName: currentUser?.name || 'Admin',
-          userRole: currentUser?.role || 'owner',
-          action: 'إضافة منتج جديد',
-          details: `إضافة المنتج: ${newProduct.nameAr}`,
-          timestamp: new Date().toISOString(),
-        },
-        ...prev.activityLogs,
-      ],
-    }));
-
-    addToast(
-      language === 'ar' ? 'تم إضافة المنتج بنجاح' : 'Product added successfully',
-      newProduct.nameAr,
-      'success'
-    );
+  const addProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'rating' | 'reviewsCount'>) => {
+    try {
+      const newProduct = await api.createProduct({
+        name_ar: productData.nameAr,
+        name_en: productData.nameEn,
+        description_ar: productData.descriptionAr || '',
+        description_en: productData.descriptionEn || '',
+        price_jod: productData.priceJOD,
+        price_usd: productData.priceUSD || productData.priceJOD * state.settings.usdExchangeRate,
+        category: productData.category,
+        image: productData.image || '',
+        images: productData.images || [],
+        stock_quantity: productData.stockQuantity || 0
+      });
+      
+      setState((prev) => ({
+        ...prev,
+        products: [newProduct, ...prev.products]
+      }));
+      
+      addToast(
+        language === 'ar' ? 'تم إضافة المنتج بنجاح' : 'Product added successfully',
+        newProduct.name_ar,
+        'success'
+      );
+    } catch (err: any) {
+      addToast(
+        language === 'ar' ? 'خطأ في إضافة المنتج' : 'Error adding product',
+        err.message || 'Unknown error',
+        'error'
+      );
+    }
   };
 
-  const updateProduct = (product: Product) => {
-    setState((prev) => ({
-      ...prev,
-      products: prev.products.map((p) => (p.id === product.id ? product : p)),
-    }));
-    addToast(
-      language === 'ar' ? 'تم تحديث بيانات المنتج' : 'Product updated',
-      product.nameAr,
-      'success'
-    );
+  const updateProduct = async (product: Product) => {
+    try {
+      const updated = await api.updateProduct(product.id, {
+        name_ar: product.nameAr,
+        name_en: product.nameEn,
+        description_ar: product.descriptionAr || '',
+        description_en: product.descriptionEn || '',
+        price_jod: product.priceJOD,
+        price_usd: product.priceUSD,
+        category: product.category,
+        image: product.image || '',
+        images: product.images || [],
+        stock_quantity: product.stockQuantity || 0
+      });
+      
+      setState((prev) => ({
+        ...prev,
+        products: prev.products.map((p) => (p.id === product.id ? updated : p)),
+      }));
+      
+      addToast(
+        language === 'ar' ? 'تم تحديث بيانات المنتج' : 'Product updated',
+        product.nameAr,
+        'success'
+      );
+    } catch (err: any) {
+      addToast(
+        language === 'ar' ? 'خطأ في تحديث المنتج' : 'Error updating product',
+        err.message || 'Unknown error',
+        'error'
+      );
+    }
   };
 
-  const deleteProduct = (productId: string) => {
-    const prod = state.products.find((p) => p.id === productId);
-    setState((prev) => ({
-      ...prev,
-      products: prev.products.filter((p) => p.id !== productId),
-    }));
-    addToast(
-      language === 'ar' ? 'تم حذف المنتج' : 'Product deleted',
-      prod?.nameAr || '',
-      'info'
-    );
+  const deleteProduct = async (productId: string) => {
+    try {
+      await api.deleteProduct(productId);
+      const prod = state.products.find((p) => p.id === productId);
+      setState((prev) => ({
+        ...prev,
+        products: prev.products.filter((p) => p.id !== productId),
+      }));
+      addToast(
+        language === 'ar' ? 'تم حذف المنتج' : 'Product deleted',
+        prod?.nameAr || '',
+        'info'
+      );
+    } catch (err: any) {
+      addToast(
+        language === 'ar' ? 'خطأ في حذف المنتج' : 'Error deleting product',
+        err.message || 'Unknown error',
+        'error'
+      );
+    }
   };
 
-  const updateProductStock = (productId: string, newStock: number) => {
-    setState((prev) => ({
-      ...prev,
-      products: prev.products.map((p) => (p.id === productId ? { ...p, stockQuantity: Math.max(0, newStock) } : p)),
-    }));
-    addToast(
-      language === 'ar' ? 'تم تحديث المخزون' : 'Stock updated',
-      `الكمية الجديدة: ${newStock}`,
-      'success'
-    );
+  const updateProductStock = async (productId: string, newStock: number) => {
+    try {
+      const updated = await api.updateStock(productId, newStock);
+      setState((prev) => ({
+        ...prev,
+        products: prev.products.map((p) => (p.id === productId ? updated : p)),
+      }));
+      addToast(
+        language === 'ar' ? 'تم تحديث المخزون' : 'Stock updated',
+        `الكمية الجديدة: ${newStock}`,
+        'success'
+      );
+    } catch (err: any) {
+      addToast(
+        language === 'ar' ? 'خطأ في تحديث المخزون' : 'Error updating stock',
+        err.message || 'Unknown error',
+        'error'
+      );
+    }
   };
 
   // Reviews
-  const addReview = (productId: string, rating: number, comment: string) => {
+  const addReview = async (productId: string, rating: number, comment: string) => {
     if (!currentUser) {
       return { success: false, message: language === 'ar' ? 'يجب تسجيل الدخول أولاً' : 'Must login first' };
     }
 
-    const newReview: Review = {
-      id: `rev-${Date.now()}`,
-      productId,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userRole: currentUser.role,
-      rating,
-      comment,
-      createdAt: new Date().toISOString(),
-    };
-
-    setState((prev) => {
-      const allProductReviews = [...prev.reviews.filter((r) => r.productId === productId), newReview];
-      const avgRating = allProductReviews.reduce((sum, r) => sum + r.rating, 0) / allProductReviews.length;
-
-      const updatedProducts = prev.products.map((p) => {
-        if (p.id === productId) {
-          return {
-            ...p,
-            rating: Number(avgRating.toFixed(1)),
-            reviewsCount: allProductReviews.length,
-          };
-        }
-        return p;
+    try {
+      const newReview = await api.addReview({
+        product_id: productId,
+        user_id: currentUser.id,
+        rating,
+        comment
       });
 
-      return {
-        ...prev,
-        reviews: [newReview, ...prev.reviews],
-        products: updatedProducts,
-      };
-    });
+      setState((prev) => {
+        const allProductReviews = [...prev.reviews.filter((r) => r.productId === productId), newReview];
+        const avgRating = allProductReviews.reduce((sum, r) => sum + r.rating, 0) / allProductReviews.length;
 
-    addToast(
-      language === 'ar' ? 'شكراً على تقييمك! ⭐' : 'Thank you for your review! ⭐',
-      language === 'ar' ? 'تم نشر مراجعتك بنجاح' : 'Review published',
-      'success'
-    );
-    return { success: true };
+        const updatedProducts = prev.products.map((p) => {
+          if (p.id === productId) {
+            return {
+              ...p,
+              rating: Number(avgRating.toFixed(1)),
+              reviewsCount: allProductReviews.length,
+            };
+          }
+          return p;
+        });
+
+        return {
+          ...prev,
+          reviews: [newReview, ...prev.reviews],
+          products: updatedProducts,
+        };
+      });
+
+      addToast(
+        language === 'ar' ? 'شكراً على تقييمك! ⭐' : 'Thank you for your review! ⭐',
+        language === 'ar' ? 'تم نشر مراجعتك بنجاح' : 'Review published',
+        'success'
+      );
+      return { success: true };
+    } catch (err: any) {
+      addToast(
+        language === 'ar' ? 'خطأ في إضافة التقييم' : 'Error adding review',
+        err.message || 'Unknown error',
+        'error'
+      );
+      return { success: false, message: err.message };
+    }
   };
 
-  const deleteReview = (reviewId: string) => {
-    setState((prev) => {
-      const review = prev.reviews.find((r) => r.id === reviewId);
-      if (!review) return prev;
+  const deleteReview = async (reviewId: string) => {
+    try {
+      await api.deleteReview(reviewId);
+      setState((prev) => {
+        const review = prev.reviews.find((r) => r.id === reviewId);
+        if (!review) return prev;
 
-      const remainingReviews = prev.reviews.filter((r) => r.id !== reviewId);
-      const productReviews = remainingReviews.filter((r) => r.productId === review.productId);
-      const avgRating = productReviews.length > 0
-        ? productReviews.reduce((s, r) => s + r.rating, 0) / productReviews.length
-        : 5.0;
+        const remainingReviews = prev.reviews.filter((r) => r.id !== reviewId);
+        const productReviews = remainingReviews.filter((r) => r.productId === review.productId);
+        const avgRating = productReviews.length > 0
+          ? productReviews.reduce((s, r) => s + r.rating, 0) / productReviews.length
+          : 5.0;
 
-      const updatedProducts = prev.products.map((p) => {
-        if (p.id === review.productId) {
-          return {
-            ...p,
-            rating: Number(avgRating.toFixed(1)),
-            reviewsCount: productReviews.length,
-          };
-        }
-        return p;
+        const updatedProducts = prev.products.map((p) => {
+          if (p.id === review.productId) {
+            return {
+              ...p,
+              rating: Number(avgRating.toFixed(1)),
+              reviewsCount: productReviews.length,
+            };
+          }
+          return p;
+        });
+
+        return {
+          ...prev,
+          reviews: remainingReviews,
+          products: updatedProducts,
+        };
       });
 
-      return {
-        ...prev,
-        reviews: remainingReviews,
-        products: updatedProducts,
-      };
-    });
-
-    addToast(
-      language === 'ar' ? 'تم حذف التقييم' : 'Review deleted',
-      '',
-      'info'
-    );
+      addToast(
+        language === 'ar' ? 'تم حذف التقييم' : 'Review deleted',
+        '',
+        'info'
+      );
+    } catch (err: any) {
+      addToast(
+        language === 'ar' ? 'خطأ في حذف التقييم' : 'Error deleting review',
+        err.message || 'Unknown error',
+        'error'
+      );
+    }
   };
 
   // Support System
@@ -1756,10 +1701,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const resetToFactoryDefaults = () => {
     setState(INITIAL_STATE);
     setCart([]);
-    setWishlist(['prod-ea-fc25']);
+    setWishlist([]);
     setCompareList([]);
     setCurrentUser(null);
-    localStorage.removeItem(STORAGE_KEY_DB);
     localStorage.removeItem(STORAGE_KEY_SESSION);
     localStorage.removeItem(STORAGE_KEY_CART);
     localStorage.removeItem(STORAGE_KEY_WISHLIST);
@@ -1786,6 +1730,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }));
   };
 
+  const resetToFactoryData = resetToFactoryDefaults;
+  const exportDataJson = exportBackupJson;
+  const importDataJson = importBackupJson;
+
   return (
     <StoreContext.Provider
       value={{
@@ -1808,6 +1756,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         t,
         bestSellerProductIds,
         unreadNotificationsCount,
+        isOrdersLoading,
         navigateTo,
         login,
         completePasswordlessLogin,
@@ -1862,9 +1811,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         exportBackupJson,
         importBackupJson,
         resetToFactoryDefaults,
-        exportDataJson: exportBackupJson,
-        importDataJson: importBackupJson,
-        resetToFactoryData: resetToFactoryDefaults,
+        exportDataJson,
+        importDataJson,
+        resetToFactoryData,
         markNotificationAsRead,
         markAllNotificationsAsRead,
         addToast,
@@ -1873,7 +1822,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setTheme,
         setCurrency,
         formatPrice,
-        isOrdersLoading,
       }}
     >
       {children}
@@ -1888,5 +1836,3 @@ export const useStore = () => {
   }
   return context;
 };
-
-
