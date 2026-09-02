@@ -439,18 +439,36 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return `${priceJOD.toFixed(2)} ${t.jordanianCurrency}`;
   };
 
-  // Best Sellers Calculation - FIXED ✅
+  // ============================================
+  // 🔥 FIXED: bestSellerProductIds with full protection
+  // ============================================
   const bestSellerProductIds = useMemo(() => {
     const countMap: Record<string, number> = {};
     
-    // تأكد إن orders مصفوفة
-    const ordersArray = Array.isArray(state.orders) ? state.orders : [];
+    let ordersArray: any[] = [];
+    try {
+      if (Array.isArray(state.orders)) {
+        ordersArray = state.orders;
+      } else if (state.orders && typeof state.orders === 'object') {
+        ordersArray = Object.values(state.orders);
+      }
+    } catch (e) {
+      ordersArray = [];
+    }
     
     ordersArray.forEach((order) => {
-      // تأكد إن items مصفوفة
-      const items = Array.isArray(order.items) ? order.items : [];
+      let items: any[] = [];
+      try {
+        if (Array.isArray(order?.items)) {
+          items = order.items;
+        } else if (order?.items && typeof order.items === 'object') {
+          items = Object.values(order.items);
+        }
+      } catch (e) {}
       items.forEach((item) => {
-        countMap[item.productId] = (countMap[item.productId] || 0) + (item.quantity || 0);
+        if (item?.productId) {
+          countMap[item.productId] = (countMap[item.productId] || 0) + (item.quantity || 0);
+        }
       });
     });
 
@@ -465,9 +483,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .map(([id]) => id);
   }, [state.orders]);
 
-  // Unread Notifications Count - FIXED ✅
+  // ============================================
+  // 🔥 FIXED: unreadNotificationsCount with full protection
+  // ============================================
   const unreadNotificationsCount = useMemo(() => {
-    const notifications = Array.isArray(state.notifications) ? state.notifications : [];
+    let notifications: any[] = [];
+    try {
+      if (Array.isArray(state.notifications)) {
+        notifications = state.notifications;
+      } else if (state.notifications && typeof state.notifications === 'object') {
+        notifications = Object.values(state.notifications);
+      }
+    } catch (e) {
+      notifications = [];
+    }
     return notifications.filter(
       (n) => !n.isRead && (n.userId === 'all' || n.userId === currentUser?.id)
     ).length;
@@ -604,7 +633,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     );
   };
 
-  // 2FA Methods (kept as is from original)
+  // 2FA Methods
   const completeTwoFactorLogin = (code: string) => {
     if (!pendingTwoFactorUser) {
       return { success: false, error: language === 'ar' ? 'لا يوجد جلسة تحقق معلقة' : 'No pending 2FA session' };
@@ -826,7 +855,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return { success: true, backupCodes: newCodes };
   };
 
-  // Sensitive Action Verification (kept from original)
+  // Sensitive Action Verification
   const requestSensitiveActionVerification = (options: {
     actionType: SensitiveActionType;
     titleAr: string;
@@ -1186,7 +1215,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const removeFromCompare = (productId: string) => setCompareList((prev) => prev.filter((id) => id !== productId));
   const clearCompare = () => setCompareList([]);
 
-  // Orders
+  // ============================================
+  // 🔥 FIXED: createOrder with safe array handling
+  // ============================================
   const createOrder = async (data: {
     customerName: string;
     customerPhone: string;
@@ -1263,10 +1294,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         shipping_notes: data.shippingNotes || ''
       });
 
-      setState((prev) => ({
-        ...prev,
-        orders: [newOrder, ...prev.orders]
-      }));
+      setState((prev) => {
+        const currentOrders = Array.isArray(prev.orders) ? prev.orders : [];
+        return {
+          ...prev,
+          orders: [newOrder, ...currentOrders]
+        };
+      });
 
       clearCart();
       addToast(
@@ -1286,6 +1320,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  // ============================================
+  // 🔥 FIXED: updateOrderStatus with safe array handling
+  // ============================================
   const updateOrderStatus = (
     orderId: string,
     status: OrderStatus,
@@ -1294,7 +1331,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     digitalDeliveries?: Order['digitalDeliveries']
   ) => {
     setState((prev) => {
-      const order = prev.orders.find((o) => o.id === orderId);
+      const currentOrders = Array.isArray(prev.orders) ? prev.orders : [];
+      const order = currentOrders.find((o) => o.id === orderId);
       if (!order) return prev;
 
       const timelineEvent = {
@@ -1325,10 +1363,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         createdAt: new Date().toISOString(),
       };
 
+      const updatedOrders = currentOrders.map((o) =>
+        o.id === orderId ? updatedOrder : o
+      );
+
+      const currentNotifications = Array.isArray(prev.notifications) ? prev.notifications : [];
+
       return {
         ...prev,
-        orders: prev.orders.map((o) => (o.id === orderId ? updatedOrder : o)),
-        notifications: [newNotif, ...prev.notifications],
+        orders: updatedOrders,
+        notifications: [newNotif, ...currentNotifications],
       };
     });
 
