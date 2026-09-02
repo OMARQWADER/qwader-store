@@ -445,26 +445,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const bestSellerProductIds = useMemo(() => {
     const countMap: Record<string, number> = {};
     
-    let ordersArray: any[] = [];
-    try {
-      if (Array.isArray(state.orders)) {
-        ordersArray = state.orders;
-      } else if (state.orders && typeof state.orders === 'object') {
-        ordersArray = Object.values(state.orders);
-      }
-    } catch (e) {
-      ordersArray = [];
-    }
-    
-    ordersArray.forEach((order) => {
-      let items: any[] = [];
-      try {
-        if (Array.isArray(order?.items)) {
-          items = order.items;
-        } else if (order?.items && typeof order.items === 'object') {
-          items = Object.values(order.items);
-        }
-      } catch (e) {}
+    // ✅ Safe array handling - prevents "forEach is not a function" error
+    const orders = state.orders || [];
+    if (!Array.isArray(orders)) return [];
+
+    orders.forEach((order) => {
+      if (!order || typeof order !== 'object') return;
+      const items = order.items || [];
+      if (!Array.isArray(items)) return;
       items.forEach((item) => {
         if (item?.productId) {
           countMap[item.productId] = (countMap[item.productId] || 0) + (item.quantity || 0);
@@ -472,6 +460,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     });
 
+    // Add baseline counts so initial products shine
     countMap['prod-ea-fc25'] = (countMap['prod-ea-fc25'] || 0) + 42;
     countMap['prod-psplus-deluxe-12m'] = (countMap['prod-psplus-deluxe-12m'] || 0) + 36;
     countMap['prod-psn-50-us'] = (countMap['prod-psn-50-us'] || 0) + 29;
@@ -487,16 +476,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // 🔥 FIXED: unreadNotificationsCount with full protection
   // ============================================
   const unreadNotificationsCount = useMemo(() => {
-    let notifications: any[] = [];
-    try {
-      if (Array.isArray(state.notifications)) {
-        notifications = state.notifications;
-      } else if (state.notifications && typeof state.notifications === 'object') {
-        notifications = Object.values(state.notifications);
-      }
-    } catch (e) {
-      notifications = [];
-    }
+    // ✅ Safe array handling
+    const notifications = state.notifications || [];
+    if (!Array.isArray(notifications)) return 0;
+
     return notifications.filter(
       (n) => !n.isRead && (n.userId === 'all' || n.userId === currentUser?.id)
     ).length;
