@@ -1780,6 +1780,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const exportDataJson = exportBackupJson;
   const importDataJson = importBackupJson;
 
+  // ✅ Show loading screen while data is being fetched
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#020617] text-white text-xl font-cairo">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>{language === 'ar' ? 'جاري تحميل المتجر...' : 'Loading store...'}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <StoreContext.Provider
       value={{
