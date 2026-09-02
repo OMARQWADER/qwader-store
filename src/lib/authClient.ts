@@ -1,10 +1,8 @@
 import { createAuthClient } from "@neondatabase/auth";
 
-// نجرب نقرأ من VITE_NEON_AUTH_URL أولاً، وإذا مش موجودة نقرأ من NEON_AUTH_URL (لـ Vercel)
-const authUrl = import.meta.env.VITE_NEON_AUTH_URL || import.meta.env.NEON_AUTH_URL;
+// رابط Neon Auth - مكتوب مباشرة للتجربة
+const AUTH_URL = "https://ep-wispy-waterfall-au5c4mj6.neonauth.c-10.us-east-1.aws.neon.tech/neondb/auth";
 
-if (!authUrl) {
-  console.error("❌ NEON_AUTH_URL is not defined in environment variables!");
-}
+export const authClient = createAuthClient(AUTH_URL);
 
-export const authClient = createAuthClient(authUrl || "");
+console.log("✅ Auth Client initialized with URL:", AUTH_URL);
