@@ -49,7 +49,7 @@ export const CheckoutView: React.FC = () => {
         remoteText: "إرسال الحساب أو الكود عبر قناة تختارها", country: "الدولة *", city: "المدينة *", governorate: "المحافظة *",
         chooseGovernorate: "اختر المحافظة", address: "العنوان التفصيلي *", addressPlaceholder: "الحي، الشارع، رقم المبنى",
         contactNote: "سيتم استخدام رقم الهاتف المدخل في بيانات العميل للتواصل والتوصيل.", contactChannel: "اختر قناة التواصل لإرسال الحساب أو الكود *",
-        noChannels: "لا توجد قنوات تواصل مضافة حالياً.", paymentMethod: "طريقة الدفع", bank: "تحويل بنكي", bankText: "حوّل قيمة الطلب ثم ارفع الإيصال",
+        noChannels: "لا توجد قنوات تواصل مضافة حالياً.", accountHandle: "اسم المستخدم أو رابط حسابك على المنصة *", accountPlaceholder: "اكتب اسم المستخدم أو رابط حسابك", paymentMethod: "طريقة الدفع", bank: "تحويل بنكي", bankText: "حوّل قيمة الطلب ثم ارفع الإيصال",
         cliq: "CliQ", cliqText: "تحويل يدوي مع إيصال", cash: "الدفع عند الاستلام", cashText: "عند الاستلام أو التوصيل",
         remoteCash: "لا يتوفر الدفع عند الاستلام للطلبات الرقمية/عن بُعد. يرجى اختيار تحويل بنكي أو CliQ.", transferNote: "قم بالتحويل إلى البيانات الموجودة في إعدادات المتجر، ثم ارفع صورة واضحة للإيصال.",
         notes: "ملاحظات إضافية", submit: "إرسال الطلب وإيصال التحويل", complete: "إكمال الطلب", submitting: "جارٍ إرسال الطلب...", proofNote: "لا نؤكد الدفع قبل مراجعة العملية والإيصال فعلياً.",
@@ -65,7 +65,7 @@ export const CheckoutView: React.FC = () => {
         remoteText: "Send the account or code through a channel you choose", country: "Country *", city: "City *", governorate: "Governorate *",
         chooseGovernorate: "Choose governorate", address: "Detailed address *", addressPlaceholder: "Area, street, building number",
         contactNote: "We will use the customer phone number for contact and delivery.", contactChannel: "Choose a contact channel for the account or code *",
-        noChannels: "No contact channels are currently configured.", paymentMethod: "Payment method", bank: "Bank transfer", bankText: "Transfer the order amount and upload the receipt",
+        noChannels: "No contact channels are currently configured.", accountHandle: "Your username or profile link *", accountPlaceholder: "Enter your username or profile link", paymentMethod: "Payment method", bank: "Bank transfer", bankText: "Transfer the order amount and upload the receipt",
         cliq: "CliQ", cliqText: "Manual transfer with receipt", cash: "Cash on delivery", cashText: "At pickup or delivery",
         remoteCash: "Cash on delivery is unavailable for digital or remote orders. Choose bank transfer or CliQ.", transferNote: "Transfer to the account details below, then upload a clear receipt.",
         notes: "Additional notes", submit: "Submit order and transfer receipt", complete: "Complete order", submitting: "Submitting order...", proofNote: "Payment is confirmed only after the transfer and receipt are reviewed.",
@@ -81,6 +81,7 @@ export const CheckoutView: React.FC = () => {
     "pickup" | "delivery" | "remote"
   >("pickup");
   const [deliveryContactChannel, setDeliveryContactChannel] = useState("");
+  const [deliveryContactHandle, setDeliveryContactHandle] = useState("");
   const [country, setCountry] = useState("الأردن");
   const [city, setCity] = useState("");
   const [governorate, setGovernorate] = useState("");
@@ -194,6 +195,8 @@ export const CheckoutView: React.FC = () => {
       return setError(t.addressRequired);
     if (fulfillment === "remote" && !selectedSocial)
       return setError(t.deliveryChannelRequired);
+    if (fulfillment === "remote" && !deliveryContactHandle.trim())
+      return setError(language === "ar" ? "يرجى كتابة اسم المستخدم أو رابط حسابك" : "Please enter your username or profile link");
     if (needsProof && !transferor.trim())
       return setError(t.transferorRequired);
     if (needsProof && !receipt) return setError(t.receiptRequired);
@@ -207,7 +210,7 @@ export const CheckoutView: React.FC = () => {
         preferredDeliveryMethod: deliveryChannel,
         fulfillmentType: fulfillment === "remote" ? "delivery" : fulfillment,
         deliveryContactChannel: selectedSocial?.key,
-        deliveryContactUrl: selectedSocial?.url,
+        deliveryContactUrl: fulfillment === "remote" ? deliveryContactHandle.trim() : undefined,
         shippingCountry:
           fulfillment === "delivery" ? country.trim() : undefined,
         shippingCity: fulfillment === "delivery" ? city.trim() : undefined,
@@ -412,7 +415,10 @@ export const CheckoutView: React.FC = () => {
                         <button
                           key={item.key}
                           type="button"
-                          onClick={() => setDeliveryContactChannel(item.key)}
+                          onClick={() => {
+                            setDeliveryContactChannel(item.key);
+                            setDeliveryContactHandle("");
+                          }}
                           className={`rounded-lg border p-3 text-right text-sm font-bold ${selectedSocial?.key === item.key ? "border-[#A855F7] bg-purple-50 text-[#A855F7]" : "border-slate-200 text-slate-600"}`}
                         >
                           {item.label}
@@ -423,6 +429,17 @@ export const CheckoutView: React.FC = () => {
                     <p className="rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
                       {checkoutCopy.noChannels}
                     </p>
+                  )}
+                  {selectedSocial && (
+                    <div className="mt-4">
+                      <Field
+                        label={`${checkoutCopy.accountHandle} (${selectedSocial.label})`}
+                        value={deliveryContactHandle}
+                        change={setDeliveryContactHandle}
+                        placeholder={checkoutCopy.accountPlaceholder}
+                        dir="ltr"
+                      />
+                    </div>
                   )}
                 </div>
               )}
