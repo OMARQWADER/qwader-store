@@ -385,6 +385,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     }
     return null;
   });
+  const remoteListsReadyUserId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!currentUser?.id) {
@@ -475,6 +476,48 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     }
     return [];
   });
+
+  useEffect(() => {
+    const userId = currentUser?.id;
+    if (!userId) {
+      remoteListsReadyUserId.current = null;
+      return;
+    }
+    if (remoteListsReadyUserId.current === userId) return;
+
+    let cancelled = false;
+    const loadRemoteLists = async () => {
+      const [remoteCartResult, remoteWishlistResult] = await Promise.allSettled([
+        api.getCart(userId),
+        api.getWishlist(userId),
+      ]);
+      if (cancelled) return;
+
+      const remoteCart = remoteCartResult.status === "fulfilled" && Array.isArray(remoteCartResult.value?.items)
+        ? remoteCartResult.value.items
+        : null;
+      const remoteWishlist = remoteWishlistResult.status === "fulfilled" && Array.isArray(remoteWishlistResult.value?.product_ids)
+        ? remoteWishlistResult.value.product_ids
+        : null;
+
+      if (remoteCart && remoteCart.length > 0) {
+        setCart(remoteCart);
+      } else if (cart.length > 0) {
+        api.updateCart(userId, cart).catch(console.error);
+      }
+      if (remoteWishlist && remoteWishlist.length > 0) {
+        setWishlist(remoteWishlist);
+      } else if (wishlist.length > 0) {
+        api.updateWishlist(userId, wishlist).catch(console.error);
+      }
+      remoteListsReadyUserId.current = userId;
+    };
+
+    void loadRemoteLists();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
 
   // Compare List
   const [compareList, setCompareList] = useState<string[]>(() => {
@@ -585,7 +628,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_CART, JSON.stringify(cart));
-      if (currentUser?.id) {
+      if (currentUser?.id && remoteListsReadyUserId.current === currentUser.id) {
         api.updateCart(currentUser.id, cart).catch(console.error);
       }
     } catch (e) {
@@ -597,7 +640,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_WISHLIST, JSON.stringify(wishlist));
-      if (currentUser?.id) {
+      if (currentUser?.id && remoteListsReadyUserId.current === currentUser.id) {
         api.updateWishlist(currentUser.id, wishlist).catch(console.error);
       }
     } catch (e) {
