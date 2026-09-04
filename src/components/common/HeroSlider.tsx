@@ -330,7 +330,7 @@ export const HeroSlider: React.FC = () => {
 
   return (
     <div
-      className="relative w-full max-w-7xl mx-auto px-2 sm:px-4 select-none group overflow-hidden"
+      className="hero-slider relative w-full max-w-7xl mx-auto px-2 sm:px-4 select-none group overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={handleMouseLeave}
     >

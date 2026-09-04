@@ -126,6 +126,23 @@ body.light-theme {
   html.light .mobile-nav-drawer .border-white\/10 {
     border-color: #e2e8f0;
   }
+
+  .light-mode .hero-slider .text-slate-100,
+  html.light .hero-slider .text-slate-100 {
+    color: #f8fafc !important;
+  }
+
+  .light-mode .hero-slider .text-slate-300,
+  html.light .hero-slider .text-slate-300 {
+    color: #cbd5e1 !important;
+  }
+
+  .light-mode .hero-slider [class*="text-purple-"],
+  .light-mode .hero-slider [class*="text-violet-"],
+  html.light .hero-slider [class*="text-purple-"],
+  html.light .hero-slider [class*="text-violet-"] {
+    color: #d8b4fe !important;
+  }
 }
 
 .light-mode input::placeholder,
