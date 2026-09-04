@@ -65,6 +65,7 @@ const AppContent: React.FC = () => {
   }, [currentRoute, setIsCartOpen]);
 
   const isMaintenanceActive = state.settings.isMaintenanceMode && currentUser?.role !== 'owner';
+  const isCheckoutRoute = currentRoute === '#checkout' || currentRoute === 'checkout';
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent('مرحباً متجر قويدر ستور 🎮🇯🇴 أود الاستفسار عن...');
@@ -149,7 +150,7 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      <Navbar />
+      {!isCheckoutRoute && <Navbar />}
       <main className="flex-1 w-full pt-4 pb-16">
         <Suspense fallback={<RouteLoadingFallback />}>{renderView()}</Suspense>
       </main>
@@ -166,7 +167,7 @@ const AppContent: React.FC = () => {
       >
         <MessageCircle className="w-6 h-6 fill-current" />
       </button>
-      <Footer />
+      {!isCheckoutRoute && <Footer />}
     </div>
   );
 };
