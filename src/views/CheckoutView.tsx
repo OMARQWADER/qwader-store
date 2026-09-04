@@ -43,7 +43,6 @@ export const CheckoutView: React.FC = () => {
         brand: "متجر قويدر", back: "العودة للمتجر", payment: "الدفع", title: "إتمام الطلب",
         subtitle: "أكمل بياناتك واختر طريقة الدفع المناسبة لإتمام طلبك.", cart: "السلة", details: "بيانات الطلب", done: "تم الطلب",
         customer: "بيانات العميل", fullName: "الاسم الكامل *", fullNamePlaceholder: "أدخل الاسم الكامل", phone: "رقم الهاتف *",
-        email: "البريد الإلكتروني", emailPlaceholder: "لإرسال نسخة من الطلب (اختياري)", receive: "طريقة استلام المنتجات الرقمية",
         whatsapp: "واتساب", emailShort: "إيميل", both: "كلاهما", fulfillment: "طريقة الاستلام", pickup: "استلام من المتجر",
         noDeliveryFee: "بدون رسوم توصيل", homeDelivery: "توصيل للمنزل", noShipping: "بدون رسوم شحن حالياً", remote: "التسليم عبر الهاتف / عن بُعد",
         remoteText: "إرسال الحساب أو الكود عبر قناة تختارها", country: "الدولة *", city: "المدينة *", governorate: "المحافظة *",
@@ -59,7 +58,6 @@ export const CheckoutView: React.FC = () => {
         brand: "QWADER STORE", back: "Back to store", payment: "Payment", title: "Complete your order",
         subtitle: "Enter your details and choose a payment method to place your order.", cart: "Cart", details: "Order details", done: "Complete",
         customer: "Customer details", fullName: "Full name *", fullNamePlaceholder: "Enter your full name", phone: "Phone number *",
-        email: "Email address", emailPlaceholder: "For an order copy (optional)", receive: "Digital delivery method",
         whatsapp: "WhatsApp", emailShort: "Email", both: "Both", fulfillment: "Fulfillment method", pickup: "Store pickup",
         noDeliveryFee: "No delivery fee", homeDelivery: "Home delivery", noShipping: "No shipping fee currently", remote: "Phone / remote delivery",
         remoteText: "Send the account or code through a channel you choose", country: "Country *", city: "City *", governorate: "Governorate *",
@@ -73,7 +71,6 @@ export const CheckoutView: React.FC = () => {
       };
   const [name, setName] = useState(currentUser?.name || "");
   const [phone, setPhone] = useState(currentUser?.phone || "");
-  const [email, setEmail] = useState(currentUser?.email || "");
   const [fulfillment, setFulfillment] = useState<
     "pickup" | "delivery" | "remote"
   >("pickup");
@@ -183,8 +180,6 @@ export const CheckoutView: React.FC = () => {
     if (!name.trim()) return setError(t.fullNameRequired);
     if (!phone.trim() || !jordanPhonePattern.test(phone.replace(/[\s-]/g, "")))
       return setError(t.phoneInvalid);
-    if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim()))
-      return setError(t.emailInvalid);
     if (fulfillment === "delivery" && !country.trim())
       return setError(t.countryRequired);
     if (fulfillment === "delivery" && !city.trim())
@@ -208,7 +203,7 @@ export const CheckoutView: React.FC = () => {
       const created = await createOrder({
         customerName: name.trim(),
         customerPhone: phone.trim(),
-        customerEmail: email.trim(),
+        customerEmail: deliveryContactChannel === "email" ? deliveryContactHandle.trim() : "",
         preferredDeliveryMethod: "email",
         fulfillmentType: fulfillment === "remote" ? "delivery" : fulfillment,
         deliveryContactChannel: selectedSocial?.key,
@@ -309,15 +304,6 @@ export const CheckoutView: React.FC = () => {
                   placeholder="+962 7X XXX XXXX"
                   type="tel"
                   dir="ltr"
-                />
-                <Field
-                  label={checkoutCopy.email}
-                  value={email}
-                  change={setEmail}
-                  placeholder={checkoutCopy.emailPlaceholder}
-                  type="email"
-                  dir="ltr"
-                  wide
                 />
               </div>
             </Panel>
