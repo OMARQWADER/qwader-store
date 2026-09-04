@@ -14,6 +14,8 @@ import {
   Sparkles,
   CreditCard,
   Send,
+  Instagram,
+  Facebook,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -169,7 +171,7 @@ export const Footer: React.FC = () => {
                     className="p-2 rounded-xl bg-pink-950/60 border border-pink-500/30 text-pink-400 hover:bg-pink-600 hover:text-white transition-all shadow-sm"
                     title="Instagram"
                   >
-                    <Sparkles className="w-4 h-4" aria-hidden="true" />
+                    <Instagram className="w-4 h-4" aria-hidden="true" />
                   </a>
                 )}
                 {facebookUrl && (
@@ -185,7 +187,7 @@ export const Footer: React.FC = () => {
                     className="p-2 rounded-xl bg-blue-950/60 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                     title="Facebook"
                   >
-                    <Zap className="w-4 h-4" aria-hidden="true" />
+                    <Facebook className="w-4 h-4" aria-hidden="true" />
                   </a>
                 )}
                 {state.settings.socialLinks.discord && (
@@ -201,7 +203,7 @@ export const Footer: React.FC = () => {
                     className="p-2 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                     title="Discord"
                   >
-                    <Clock className="w-4 h-4" aria-hidden="true" />
+                    <Gamepad2 className="w-4 h-4" aria-hidden="true" />
                   </a>
                 )}
                 {state.settings.socialLinks.telegram && (
