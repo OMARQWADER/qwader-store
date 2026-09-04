@@ -10,6 +10,8 @@ body,
 }
 
 :root {
+  --brand-accent: #A855F7;
+  --brand-accent-readable: #7E22CE;
   --app-bg: #020617;
   --app-text: #f8fafc;
   --app-muted: #cbd5e1;
@@ -25,6 +27,7 @@ html.light,
 html[data-theme="light"],
 body.light-mode,
 body.light-theme {
+  --brand-accent-readable: #7E22CE;
   --app-bg: #f8fafc;
   --app-text: #0f172a;
   --app-muted: #334155;
@@ -184,4 +187,17 @@ html.light button.bg-emerald-600 {
 
 .dark-mode .text-slate-900 {
   color: #e2e8f0;
+}
+
+/* Keep the brand accent readable across both theme backgrounds. */
+.dark-mode [class*="text-purple-"],
+.dark-mode [class*="text-violet-"] {
+  color: var(--brand-accent) !important;
+}
+
+.light-mode [class*="text-purple-"],
+.light-mode [class*="text-violet-"],
+html.light [class*="text-purple-"],
+html.light [class*="text-violet-"] {
+  color: var(--brand-accent-readable) !important;
 }
