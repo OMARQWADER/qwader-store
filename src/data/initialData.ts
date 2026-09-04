@@ -32,7 +32,7 @@ export const INITIAL_STATE: StoreState = {
     lowStockGlobalThreshold: 5,
     socialLinks: {
       whatsapp: 'https://wa.me/962791234567',
-      facebook: '',
+      facebook: 'https://facebook.com/qwaderstore',
       instagram: 'https://instagram.com/qwaderstore',
       tiktok: '',
       twitter: 'https://x.com/qwaderstore',

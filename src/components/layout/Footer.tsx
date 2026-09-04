@@ -18,6 +18,7 @@ import {
 
 export const Footer: React.FC = () => {
   const { state, language, navigateTo, t } = useStore();
+  const facebookUrl = state.settings.socialLinks?.facebook || 'https://facebook.com/qwaderstore';
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent('مرحباً متجر قويدر ستور، أود الاستفسار عن كود أو لعبة رقمية!');
@@ -171,12 +172,12 @@ export const Footer: React.FC = () => {
                     <Sparkles className="w-4 h-4" aria-hidden="true" />
                   </a>
                 )}
-                {state.settings.socialLinks.facebook && (
+                {facebookUrl && (
                   <a
                     href={
-                      state.settings.socialLinks.facebook.startsWith('http')
-                        ? state.settings.socialLinks.facebook
-                        : `https://${state.settings.socialLinks.facebook}`
+                      facebookUrl.startsWith('http')
+                        ? facebookUrl
+                        : `https://${facebookUrl}`
                     }
                     target="_blank"
                     rel="noreferrer"
