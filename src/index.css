@@ -104,6 +104,28 @@ body.light-theme {
   .glass-nav-light {
     background: rgba(255, 255, 255, 0.9);
   }
+
+  .light-mode .mobile-nav-drawer,
+  html.light .mobile-nav-drawer {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: #e9d5ff;
+  }
+
+  .light-mode .mobile-nav-drawer .bg-white\/5,
+  .light-mode .mobile-nav-drawer .bg-white\/\[0\.02\],
+  .light-mode .mobile-nav-drawer .bg-white\/\[0\.03\],
+  html.light .mobile-nav-drawer .bg-white\/5,
+  html.light .mobile-nav-drawer .bg-white\/\[0\.02\],
+  html.light .mobile-nav-drawer .bg-white\/\[0\.03\] {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  .light-mode .mobile-nav-drawer .border-white\/10,
+  html.light .mobile-nav-drawer .border-white\/10 {
+    border-color: #e2e8f0;
+  }
 }
 
 .light-mode input::placeholder,

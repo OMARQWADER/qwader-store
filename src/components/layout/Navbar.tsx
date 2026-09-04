@@ -589,7 +589,7 @@ export const Navbar: React.FC = () => {
           <div className="fixed inset-y-0 start-0 max-w-full flex">
             <div
               id="mobile-nav-drawer"
-              className="w-screen max-w-xs sm:max-w-sm bg-gradient-to-b from-[#0f172a] via-[#090d16] to-[#020617] text-slate-100 shadow-2xl border-e border-purple-500/20 flex flex-col h-full overflow-hidden animate-in slide-in-from-start duration-300"
+              className="mobile-nav-drawer w-screen max-w-xs sm:max-w-sm bg-gradient-to-b from-[#0f172a] via-[#090d16] to-[#020617] text-slate-100 shadow-2xl border-e border-purple-500/20 flex flex-col h-full overflow-hidden animate-in slide-in-from-start duration-300"
             >
               {/* Drawer Header */}
               <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
