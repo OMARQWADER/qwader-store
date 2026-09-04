@@ -74,7 +74,9 @@ const readSavedStoreState = (): StoreState | null => {
           ...((parsed.settings && parsed.settings.branding) || {}),
         },
       },
-      products: Array.isArray(parsed.products) ? parsed.products : INITIAL_STATE.products,
+      products: Array.isArray(parsed.products) && parsed.products.length > 0
+        ? parsed.products
+        : INITIAL_STATE.products,
       orders: Array.isArray(parsed.orders) ? parsed.orders : INITIAL_STATE.orders,
       users: Array.isArray(parsed.users) ? parsed.users : INITIAL_STATE.users,
       reviews: Array.isArray(parsed.reviews) ? parsed.reviews : INITIAL_STATE.reviews,
