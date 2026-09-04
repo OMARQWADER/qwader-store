@@ -317,7 +317,7 @@ export const HeroSlider: React.FC = () => {
 
   return (
     <div
-      className="relative w-full max-w-7xl mx-auto px-2 sm:px-4 select-none group"
+      className="relative w-full max-w-7xl mx-auto px-2 sm:px-4 select-none group overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={handleMouseLeave}
     >
@@ -364,7 +364,6 @@ export const HeroSlider: React.FC = () => {
                     src={slide.image}
                     alt={language === 'ar' ? slide.titleAr : slide.titleEn}
                     loading={idx === 0 ? 'eager' : 'lazy'}
-                    fetchPriority={idx === 0 ? 'high' : 'auto'}
                     referrerPolicy="no-referrer"
                     onLoad={() => handleImageLoad(slide.id)}
                     className={`w-full h-full object-cover object-center transition-all duration-700 ${

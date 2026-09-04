@@ -119,7 +119,12 @@ export const Navbar: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 w-full transition-all duration-300">
       {/* Top Announcement Bar */}
-      <div className="bg-gradient-to-r from-violet-900/90 via-purple-900/90 to-fuchsia-900/90 text-white text-[11px] font-semibold py-1 sm:py-1.5 px-3 sm:px-4 text-center border-b border-violet-500/20 backdrop-blur-md flex items-center justify-between">
+      {state.settings.showPromoBanner !== false && (() => {
+        const featuredPromo = state.settings.featuredPromoCode
+          ? state.promoCodes.find((promo) => promo.code === state.settings.featuredPromoCode && promo.active)
+          : state.promoCodes.find((promo) => promo.active);
+        if (!featuredPromo) return null;
+        return <div className="bg-gradient-to-r from-violet-900/90 via-purple-900/90 to-fuchsia-900/90 text-white text-[11px] font-semibold py-1 sm:py-1.5 px-3 sm:px-4 text-center border-b border-violet-500/20 backdrop-blur-md flex items-center justify-between">
         <div className="hidden sm:flex items-center gap-2 text-violet-200">
           <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
           <span>{language === 'ar' ? 'متجر أردني رسمي 🇯🇴 — تسليم فوري للأكواد خلال دقائق عبر كليك والواتساب' : 'Jordan’s Premier Digital Hub 🇯🇴 — Instant WhatsApp & CliQ Delivery'}</span>
@@ -127,9 +132,9 @@ export const Navbar: React.FC = () => {
 
         <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 sm:gap-4">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-violet-300 text-[10px] sm:text-xs">{language === 'ar' ? 'كود خصم 10%:' : '10% Promo:'}</span>
-            <span className="bg-white/20 text-white px-1.5 sm:px-2 py-0.5 rounded font-black tracking-wider text-[10px] border border-white/30 cursor-pointer hover:bg-white/30" onClick={() => navigator.clipboard?.writeText('QWADER10')}>
-              QWADER10
+            <span className="text-violet-300 text-[10px] sm:text-xs">{language === 'ar' ? 'كود خصم:' : 'Promo:'}</span>
+            <span className="bg-white/20 text-white px-1.5 sm:px-2 py-0.5 rounded font-black tracking-wider text-[10px] border border-white/30 cursor-pointer hover:bg-white/30" onClick={() => navigator.clipboard?.writeText(featuredPromo.code)}>
+              {featuredPromo.code}
             </span>
           </div>
 
@@ -151,7 +156,8 @@ export const Navbar: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
+      </div>;
+      })()}
 
       {/* Main Navigation Glass Bar */}
       <div className={`${theme === 'dark' ? 'glass-nav bg-[#020617]/80' : 'glass-nav-light'} px-3 sm:px-4 lg:px-8 py-2.5 sm:py-3 transition-colors border-b border-white/10 backdrop-blur-md`} role="navigation" aria-label="Main Navigation">

@@ -186,38 +186,6 @@ export const Footer: React.FC = () => {
                     <Zap className="w-4 h-4" aria-hidden="true" />
                   </a>
                 )}
-                {state.settings.socialLinks.tiktok && (
-                  <a
-                    href={
-                      state.settings.socialLinks.tiktok.startsWith('http')
-                        ? state.settings.socialLinks.tiktok
-                        : `https://${state.settings.socialLinks.tiktok}`
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="TikTok Profile"
-                    className="p-2 rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white transition-all shadow-sm"
-                    title="TikTok"
-                  >
-                    <Gamepad2 className="w-4 h-4" aria-hidden="true" />
-                  </a>
-                )}
-                {state.settings.socialLinks.youtube && (
-                  <a
-                    href={
-                      state.settings.socialLinks.youtube.startsWith('http')
-                        ? state.settings.socialLinks.youtube
-                        : `https://${state.settings.socialLinks.youtube}`
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="YouTube Channel"
-                    className="p-2 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-400 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                    title="YouTube"
-                  >
-                    <Headphones className="w-4 h-4" aria-hidden="true" />
-                  </a>
-                )}
                 {state.settings.socialLinks.discord && (
                   <a
                     href={

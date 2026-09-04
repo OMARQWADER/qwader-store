@@ -136,7 +136,6 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({ onSelect
                 {filteredProducts.map((product, idx) => {
                   const isSelected = idx === selectedIndex;
                   const isBestSeller = bestSellerProductIds.slice(0, 3).includes(product.id);
-                  const isLowStock = product.stockQuantity > 0 && product.stockQuantity <= product.lowStockThreshold;
 
                   return (
                     <li
@@ -167,11 +166,6 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({ onSelect
                               {language === 'ar' ? 'أكثر مبيعاً' : 'Best Seller'}
                             </span>
                           )}
-                          {isLowStock && (
-                            <span className="text-[10px] font-bold text-rose-300 bg-rose-950/80 px-1.5 py-0.2 rounded border border-rose-500/30">
-                              {language === 'ar' ? `متبقي ${product.stockQuantity}` : `Only ${product.stockQuantity} left`}
-                            </span>
-                          )}
                         </div>
                         <p className="text-sm font-semibold truncate text-slate-100">
                           {language === 'ar' ? product.nameAr : product.nameEn}
@@ -184,11 +178,6 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({ onSelect
                         <div className="text-sm font-extrabold text-emerald-400">
                           {formatPrice(product.priceJOD, product.priceUSD)}
                         </div>
-                        {product.stockQuantity === 0 && (
-                          <div className="text-[10px] text-rose-400 font-bold">
-                            {language === 'ar' ? 'نفد المخزون' : 'Out of Stock'}
-                          </div>
-                        )}
                       </div>
                     </li>
                   );

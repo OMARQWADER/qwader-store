@@ -34,8 +34,43 @@ export const CheckoutView: React.FC = () => {
     removePromoCode,
     createOrder,
     language,
+    t,
     navigateTo,
+    formatPrice,
   } = useStore();
+  const checkoutCopy = language === "ar"
+    ? {
+        brand: "متجر قويدر", back: "العودة للمتجر", payment: "الدفع", title: "إتمام الطلب",
+        subtitle: "أكمل بياناتك واختر طريقة الدفع المناسبة لإتمام طلبك.", cart: "السلة", details: "بيانات الطلب", done: "تم الطلب",
+        customer: "بيانات العميل", fullName: "الاسم الكامل *", fullNamePlaceholder: "أدخل الاسم الكامل", phone: "رقم الهاتف *",
+        email: "البريد الإلكتروني", emailPlaceholder: "لإرسال نسخة من الطلب (اختياري)", receive: "طريقة استلام المنتجات الرقمية",
+        whatsapp: "واتساب", emailShort: "إيميل", both: "كلاهما", fulfillment: "طريقة الاستلام", pickup: "استلام من المتجر",
+        noDeliveryFee: "بدون رسوم توصيل", homeDelivery: "توصيل للمنزل", noShipping: "بدون رسوم شحن حالياً", remote: "التسليم عبر الهاتف / عن بُعد",
+        remoteText: "إرسال الحساب أو الكود عبر قناة تختارها", country: "الدولة *", city: "المدينة *", governorate: "المحافظة *",
+        chooseGovernorate: "اختر المحافظة", address: "العنوان التفصيلي *", addressPlaceholder: "الحي، الشارع، رقم المبنى",
+        contactNote: "سيتم استخدام رقم الهاتف المدخل في بيانات العميل للتواصل والتوصيل.", contactChannel: "اختر قناة التواصل لإرسال الحساب أو الكود *",
+        noChannels: "لا توجد قنوات تواصل مضافة حالياً.", paymentMethod: "طريقة الدفع", bank: "تحويل بنكي", bankText: "حوّل قيمة الطلب ثم ارفع الإيصال",
+        cliq: "CliQ", cliqText: "تحويل يدوي مع إيصال", cash: "الدفع عند الاستلام", cashText: "عند الاستلام أو التوصيل",
+        remoteCash: "لا يتوفر الدفع عند الاستلام للطلبات الرقمية/عن بُعد. يرجى اختيار تحويل بنكي أو CliQ.", transferNote: "قم بالتحويل إلى البيانات الموجودة في إعدادات المتجر، ثم ارفع صورة واضحة للإيصال.",
+        notes: "ملاحظات إضافية", submit: "إرسال الطلب وإيصال التحويل", complete: "إكمال الطلب", submitting: "جارٍ إرسال الطلب...", proofNote: "لا نؤكد الدفع قبل مراجعة العملية والإيصال فعلياً.",
+        summary: "ملخص الطلب", quantity: "الكمية", promoInvalid: "رمز الخصم غير صالح أو منتهي.", apply: "تطبيق", promoPlaceholder: "أدخل رمز الكوبون", total: "الإجمالي",
+      }
+    : {
+        brand: "QWADER STORE", back: "Back to store", payment: "Payment", title: "Complete your order",
+        subtitle: "Enter your details and choose a payment method to place your order.", cart: "Cart", details: "Order details", done: "Complete",
+        customer: "Customer details", fullName: "Full name *", fullNamePlaceholder: "Enter your full name", phone: "Phone number *",
+        email: "Email address", emailPlaceholder: "For an order copy (optional)", receive: "Digital delivery method",
+        whatsapp: "WhatsApp", emailShort: "Email", both: "Both", fulfillment: "Fulfillment method", pickup: "Store pickup",
+        noDeliveryFee: "No delivery fee", homeDelivery: "Home delivery", noShipping: "No shipping fee currently", remote: "Phone / remote delivery",
+        remoteText: "Send the account or code through a channel you choose", country: "Country *", city: "City *", governorate: "Governorate *",
+        chooseGovernorate: "Choose governorate", address: "Detailed address *", addressPlaceholder: "Area, street, building number",
+        contactNote: "We will use the customer phone number for contact and delivery.", contactChannel: "Choose a contact channel for the account or code *",
+        noChannels: "No contact channels are currently configured.", paymentMethod: "Payment method", bank: "Bank transfer", bankText: "Transfer the order amount and upload the receipt",
+        cliq: "CliQ", cliqText: "Manual transfer with receipt", cash: "Cash on delivery", cashText: "At pickup or delivery",
+        remoteCash: "Cash on delivery is unavailable for digital or remote orders. Choose bank transfer or CliQ.", transferNote: "Transfer to the account details below, then upload a clear receipt.",
+        notes: "Additional notes", submit: "Submit order and transfer receipt", complete: "Complete order", submitting: "Submitting order...", proofNote: "Payment is confirmed only after the transfer and receipt are reviewed.",
+        summary: "Order summary", quantity: "Quantity", promoInvalid: "Invalid or expired promo code.", apply: "Apply", promoPlaceholder: "Enter promo code", total: "Total",
+      };
   const [name, setName] = useState(currentUser?.name || "");
   const [phone, setPhone] = useState(currentUser?.phone || "");
   const [email, setEmail] = useState(currentUser?.email || "");
@@ -66,23 +101,28 @@ export const CheckoutView: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  const bankDetailsLabels = {
+    bank: language === "ar" ? "البنك" : "Bank",
+    accountHolder: language === "ar" ? "اسم صاحب الحساب" : "Account holder",
+    cliq: language === "ar" ? "رقم الحساب / CliQ" : "Account number / CliQ",
+    iban: "IBAN",
+  };
+
   const governors = (state.settings.fulfillment?.governorates || []).filter(
     (item) => item.active,
   );
   const socialOptions = Object.entries(state.settings.socialLinks || {})
-    .filter(([, value]) => Boolean(value))
+    .filter(([key, value]) => (Boolean(value) || key === "facebook") && !["tiktok", "youtube"].includes(key))
     .map(([key, value]) => ({
       key,
-      url: String(value),
+      url: String(value || (key === "facebook" ? "https://facebook.com/qwaderstore" : "")),
       label:
         (
           {
             whatsapp: "واتساب",
             facebook: "فيسبوك",
             instagram: "إنستغرام",
-            tiktok: "تيك توك",
             telegram: "تيليجرام",
-            youtube: "يوتيوب",
             twitter: "تويتر",
             discord: "ديسكورد",
             snapchat: "سناب شات",
@@ -108,14 +148,14 @@ export const CheckoutView: React.FC = () => {
   const discount = appliedPromo?.discountPercent
     ? (subtotal * appliedPromo.discountPercent) / 100
     : Math.min(appliedPromo?.discountFixedJOD || 0, subtotal);
-  const discountUSD = appliedPromo?.discountPercent
+  const discountUsdAmount = appliedPromo?.discountPercent
     ? (subtotalUSD * appliedPromo.discountPercent) / 100
     : discount * state.settings.usdExchangeRate;
   const shipping = 0;
   const total = Math.max(0, subtotal - discount + shipping);
   const totalUSD = Math.max(
     0,
-    subtotalUSD - discountUSD + shipping * state.settings.usdExchangeRate,
+    subtotalUSD - discountUsdAmount + shipping * state.settings.usdExchangeRate,
   );
   const needsProof = payment === "bank_transfer" || payment === "cliq";
 
@@ -123,9 +163,9 @@ export const CheckoutView: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))
-      return setError("يرجى اختيار صورة JPG أو PNG أو WEBP.");
+      return setError(t.receiptTypeError);
     if (file.size > MAX_RECEIPT_SIZE)
-      return setError("حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت.");
+      return setError(t.receiptSizeError);
     setError("");
     const reader = new FileReader();
     reader.onload = () =>
@@ -139,24 +179,24 @@ export const CheckoutView: React.FC = () => {
 
   const placeOrder = async () => {
     if (isSubmitting) return;
-    if (!name.trim()) return setError("يرجى إدخال الاسم الكامل.");
+    if (!name.trim()) return setError(t.fullNameRequired);
     if (!phone.trim() || !jordanPhonePattern.test(phone.replace(/[\s-]/g, "")))
-      return setError("يرجى إدخال رقم هاتف أردني صحيح.");
+      return setError(t.phoneInvalid);
     if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim()))
-      return setError("يرجى إدخال بريد إلكتروني صحيح.");
+      return setError(t.emailInvalid);
     if (fulfillment === "delivery" && !country.trim())
-      return setError("يرجى إدخال الدولة.");
+      return setError(t.countryRequired);
     if (fulfillment === "delivery" && !city.trim())
-      return setError("يرجى إدخال المدينة.");
+      return setError(t.cityRequired);
     if (fulfillment === "delivery" && !governorate && !selectedGovernor)
-      return setError("يرجى اختيار المحافظة.");
+      return setError(t.governorateRequired);
     if (fulfillment === "delivery" && !address.trim())
-      return setError("يرجى إدخال العنوان التفصيلي.");
+      return setError(t.addressRequired);
     if (fulfillment === "remote" && !selectedSocial)
-      return setError("يرجى اختيار وسيلة التواصل للتسليم عن بعد.");
+      return setError(t.deliveryChannelRequired);
     if (needsProof && !transferor.trim())
-      return setError("يرجى إدخال اسم صاحب الحساب الذي تم التحويل منه.");
-    if (needsProof && !receipt) return setError("يرجى رفع صورة إيصال التحويل.");
+      return setError(t.transferorRequired);
+    if (needsProof && !receipt) return setError(t.receiptRequired);
     setError("");
     setIsSubmitting(true);
     try {
@@ -193,19 +233,19 @@ export const CheckoutView: React.FC = () => {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "تعذر إنشاء الطلب حالياً. يرجى المحاولة مرة أخرى.",
+          : t.orderCreationError,
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (order) return <Success order={order} navigateTo={navigateTo} />;
-  if (!cart.length) return <Empty navigateTo={navigateTo} />;
+  if (order) return <Success order={order} navigateTo={navigateTo} language={language} formatPrice={formatPrice} />;
+  if (!cart.length) return <Empty navigateTo={navigateTo} language={language} copy={checkoutCopy} />;
 
   return (
     <main
-      dir="rtl"
+      dir={language === "ar" ? "rtl" : "ltr"}
       className="min-h-screen bg-[#f7f8fa] px-4 py-6 text-slate-900 sm:px-6 lg:py-10"
     >
       <div className="mx-auto max-w-7xl">
@@ -215,7 +255,7 @@ export const CheckoutView: React.FC = () => {
               <ShoppingBag className="h-5 w-5" />
             </div>
             <div>
-              <strong className="block">متجر قويدر</strong>
+              <strong className="block">{checkoutCopy.brand}</strong>
               <small className="text-xs text-slate-500">Qwader Game</small>
             </div>
           </div>
@@ -224,41 +264,41 @@ export const CheckoutView: React.FC = () => {
             className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-bold text-slate-600 hover:bg-slate-100"
           >
             <ArrowLeft className="h-4 w-4" />
-            العودة للمتجر
+            {checkoutCopy.back}
           </button>
         </header>
         <div className="mb-7">
-          <p className="text-sm font-bold text-[#0b5ed7]">الدفع</p>
+          <p className="text-sm font-bold text-[#0b5ed7]">{checkoutCopy.payment}</p>
           <h1 className="mt-2 text-3xl font-black text-slate-950">
-            إتمام الطلب
+            {checkoutCopy.title}
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            أكمل بياناتك واختر طريقة الدفع المناسبة لإتمام طلبك.
+            {checkoutCopy.subtitle}
           </p>
           <div className="mt-5 flex max-w-xl items-center gap-2 text-xs font-bold text-slate-400">
-            <span>السلة</span>
+            <span>{checkoutCopy.cart}</span>
             <span>←</span>
-            <span>بيانات الطلب</span>
+            <span>{checkoutCopy.details}</span>
             <span>←</span>
             <b className="rounded-full bg-[#0b5ed7] px-3 py-1.5 text-white">
-              الدفع
+              {checkoutCopy.payment}
             </b>
             <span>←</span>
-            <span>تم الطلب</span>
+            <span>{checkoutCopy.done}</span>
           </div>
         </div>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-5">
-            <Panel icon={<Phone />} title="بيانات العميل">
+            <Panel icon={<Phone />} title={checkoutCopy.customer}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
-                  label="الاسم الكامل *"
+                  label={checkoutCopy.fullName}
                   value={name}
                   change={setName}
-                  placeholder="أدخل الاسم الكامل"
+                  placeholder={checkoutCopy.fullNamePlaceholder}
                 />
                 <Field
-                  label="رقم الهاتف *"
+                  label={checkoutCopy.phone}
                   value={phone}
                   change={setPhone}
                   placeholder="+962 7X XXX XXXX"
@@ -266,17 +306,17 @@ export const CheckoutView: React.FC = () => {
                   dir="ltr"
                 />
                 <Field
-                  label="البريد الإلكتروني"
+                  label={checkoutCopy.email}
                   value={email}
                   change={setEmail}
-                  placeholder="لإرسال نسخة من الطلب (اختياري)"
+                  placeholder={checkoutCopy.emailPlaceholder}
                   type="email"
                   dir="ltr"
                   wide
                 />
               </div>
               <p className="mt-5 mb-2 text-sm font-bold">
-                طريقة استلام المنتجات الرقمية
+                {checkoutCopy.receive}
               </p>
               <div className="grid grid-cols-3 gap-2">
                 {(["whatsapp", "email", "both"] as const).map((item) => (
@@ -286,60 +326,63 @@ export const CheckoutView: React.FC = () => {
                     className={`min-h-11 rounded-lg border text-xs font-bold ${deliveryChannel === item ? "border-[#0b5ed7] bg-blue-50 text-[#0b5ed7]" : "border-slate-200 text-slate-500"}`}
                   >
                     {item === "whatsapp"
-                      ? "واتساب"
+                      ? checkoutCopy.whatsapp
                       : item === "email"
-                        ? "إيميل"
-                        : "كلاهما"}
+                        ? checkoutCopy.emailShort
+                        : checkoutCopy.both}
                   </button>
                 ))}
               </div>
             </Panel>
-            <Panel icon={<Truck />} title="طريقة الاستلام">
+            <Panel icon={<Truck />} title={checkoutCopy.fulfillment}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Choice
                   active={fulfillment === "pickup"}
                   click={() => setFulfillment("pickup")}
                   icon={<Store />}
-                  title="استلام من المتجر"
-                  text="بدون رسوم توصيل"
+                  title={checkoutCopy.pickup}
+                  text={checkoutCopy.noDeliveryFee}
                 />
                 <Choice
                   active={fulfillment === "delivery"}
                   click={() => setFulfillment("delivery")}
                   icon={<Truck />}
-                  title="توصيل للمنزل"
-                  text="بدون رسوم شحن حالياً"
+                  title={checkoutCopy.homeDelivery}
+                  text={checkoutCopy.noShipping}
                 />
                 <Choice
                   active={fulfillment === "remote"}
-                  click={() => setFulfillment("remote")}
+                  click={() => {
+                    setFulfillment("remote");
+                    if (payment === "cash_pickup") setPayment("bank_transfer");
+                  }}
                   icon={<Phone />}
-                  title="التسليم عبر الهاتف / عن بُعد"
-                  text="إرسال الحساب أو الكود عبر قناة تختارها"
+                  title={checkoutCopy.remote}
+                  text={checkoutCopy.remoteText}
                 />
               </div>
               {fulfillment === "delivery" && (
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <Field
-                    label="الدولة *"
+                    label={checkoutCopy.country}
                     value={country}
                     change={setCountry}
-                    placeholder="الأردن"
+                    placeholder={language === "ar" ? "الأردن" : "Jordan"}
                   />
                   <Field
-                    label="المدينة *"
+                    label={checkoutCopy.city}
                     value={city}
                     change={setCity}
-                    placeholder="عمّان"
+                    placeholder={language === "ar" ? "عمّان" : "Amman"}
                   />
                   <label className="text-sm font-bold">
-                    المحافظة *
+                    {checkoutCopy.governorate}
                     <select
                       value={governorate || selectedGovernor?.id || ""}
                       onChange={(event) => setGovernorate(event.target.value)}
                       className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"
                     >
-                      <option value="">اختر المحافظة</option>
+                      <option value="">{checkoutCopy.chooseGovernorate}</option>
                       {governors.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.nameAr}
@@ -348,21 +391,20 @@ export const CheckoutView: React.FC = () => {
                     </select>
                   </label>
                   <Field
-                    label="العنوان التفصيلي *"
+                    label={checkoutCopy.address}
                     value={address}
                     change={setAddress}
-                    placeholder="الحي، الشارع، رقم المبنى"
+                    placeholder={checkoutCopy.addressPlaceholder}
                   />
                   <p className="text-xs text-slate-500 sm:col-span-2">
-                    سيتم استخدام رقم الهاتف المدخل في بيانات العميل للتواصل
-                    والتوصيل.
+                    {checkoutCopy.contactNote}
                   </p>
                 </div>
               )}
               {fulfillment === "remote" && (
                 <div className="mt-4">
                   <p className="mb-2 text-sm font-bold">
-                    اختر قناة التواصل لإرسال الحساب أو الكود *
+                    {checkoutCopy.contactChannel}
                   </p>
                   {socialOptions.length > 0 ? (
                     <div className="grid gap-2 sm:grid-cols-2">
@@ -379,53 +421,59 @@ export const CheckoutView: React.FC = () => {
                     </div>
                   ) : (
                     <p className="rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
-                      لا توجد قنوات تواصل مضافة حالياً.
+                      {checkoutCopy.noChannels}
                     </p>
                   )}
                 </div>
               )}
             </Panel>
-            <Panel icon={<CreditCard />} title="طريقة الدفع">
+            <Panel icon={<CreditCard />} title={checkoutCopy.paymentMethod}>
               <div className="space-y-3">
                 <Choice
                   active={payment === "bank_transfer"}
                   click={() => setPayment("bank_transfer")}
                   icon={<Building2 />}
-                  title="تحويل بنكي"
-                  text="حوّل قيمة الطلب ثم ارفع الإيصال"
+                  title={checkoutCopy.bank}
+                  text={checkoutCopy.bankText}
                 />
                 <Choice
                   active={payment === "cliq"}
                   click={() => setPayment("cliq")}
                   icon={<Wallet />}
-                  title="CliQ"
-                  text="تحويل يدوي مع إيصال"
+                  title={checkoutCopy.cliq}
+                  text={checkoutCopy.cliqText}
                 />
                 <Choice
                   active={payment === "cash_pickup"}
                   click={() => setPayment("cash_pickup")}
+                  disabled={fulfillment === "remote"}
                   icon={<Wallet />}
-                  title="الدفع عند الاستلام"
-                  text="عند الاستلام أو التوصيل"
+                  title={checkoutCopy.cash}
+                  text={checkoutCopy.cashText}
                 />
               </div>
+              {fulfillment === "remote" && payment === "cash_pickup" && (
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                  {checkoutCopy.remoteCash}
+                </div>
+              )}
               {needsProof && (
                 <div className="mt-5 space-y-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
                   <p className="text-sm leading-6 text-slate-600">
-                    قم بالتحويل إلى البيانات الموجودة في إعدادات المتجر، ثم ارفع
-                    صورة واضحة للإيصال.
+                    {checkoutCopy.transferNote}
                   </p>
-                  <BankDetails settings={state.settings} />
+                  <BankDetails settings={state.settings} language={language} />
                   <Field
-                    label="اسم صاحب الحساب الذي تم التحويل منه *"
+                    label={language === "ar" ? "اسم صاحب الحساب الذي تم التحويل منه *" : "Transfer account holder name *"}
                     value={transferor}
                     change={setTransferor}
-                    placeholder="أدخل الاسم كما يظهر في الحساب البنكي"
+                    placeholder={language === "ar" ? "أدخل الاسم كما يظهر في الحساب البنكي" : "Enter the name shown on the bank account"}
                   />
                   <Receipt
                     receipt={receipt}
                     pick={() => fileInput.current?.click()}
                     remove={() => setReceipt(null)}
+                    language={language}
                   />
                   <input
                     ref={fileInput}
@@ -435,16 +483,16 @@ export const CheckoutView: React.FC = () => {
                     className="hidden"
                   />
                   <Field
-                    label="الرقم المرجعي للتحويل (اختياري)"
+                    label={language === "ar" ? "الرقم المرجعي للتحويل (اختياري)" : "Transfer reference (optional)"}
                     value={reference}
                     change={setReference}
-                    placeholder="أدخل الرقم المرجعي إن وجد"
+                    placeholder={language === "ar" ? "أدخل الرقم المرجعي إن وجد" : "Enter the reference if available"}
                     dir="ltr"
                   />
                 </div>
               )}
               <label className="mt-5 block text-sm font-bold">
-                ملاحظات إضافية
+                {checkoutCopy.notes}
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
@@ -468,23 +516,28 @@ export const CheckoutView: React.FC = () => {
             >
               <CheckCircle2 className="h-5 w-5" />
               {isSubmitting
-                ? "جارٍ إرسال الطلب..."
+                ? checkoutCopy.submitting
                 : needsProof
-                  ? "إرسال الطلب وإيصال التحويل"
-                  : "إكمال الطلب"}
+                  ? checkoutCopy.submit
+                  : checkoutCopy.complete}
             </button>
             <p className="flex items-center justify-center gap-2 text-center text-xs text-slate-500">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              لا نؤكد الدفع قبل مراجعة العملية والإيصال فعلياً.
+              {checkoutCopy.proofNote}
             </p>
           </div>
           <aside className="space-y-4 lg:sticky lg:top-5">
             <Summary
               cart={cart}
               subtotal={subtotal}
+              subtotalUSD={subtotalUSD}
               discount={discount}
+              discountUsdAmount={discountUsdAmount}
               shipping={shipping}
               total={total}
+              totalUSD={totalUSD}
+              exchangeRate={state.settings.usdExchangeRate}
+              copy={checkoutCopy}
               promo={promo}
               setPromo={setPromo}
               apply={applyPromoCode}
@@ -492,6 +545,9 @@ export const CheckoutView: React.FC = () => {
               remove={removePromoCode}
               promoError={promoError}
               setPromoError={setPromoError}
+              formatPrice={formatPrice}
+              t={t}
+              language={language}
             />
           </aside>
         </div>
@@ -557,20 +613,23 @@ const Field = ({
 const Choice = ({
   active,
   click,
+  disabled = false,
   icon,
   title,
   text,
 }: {
   active: boolean;
   click: () => void;
+  disabled?: boolean;
   icon: React.ReactNode;
   title: string;
   text: string;
 }) => (
   <button
     type="button"
+    disabled={disabled}
     onClick={click}
-    className={`flex w-full items-center gap-3 rounded-lg border p-4 text-right ${active ? "border-[#0b5ed7] bg-blue-50 ring-1 ring-[#0b5ed7]" : "border-slate-200 hover:border-slate-300"}`}
+    className={`flex w-full items-center gap-3 rounded-lg border p-4 text-right ${disabled ? "cursor-not-allowed opacity-50" : active ? "border-[#0b5ed7] bg-blue-50 ring-1 ring-[#0b5ed7]" : "border-slate-200 hover:border-slate-300"}`}
   >
     <span
       className={`h-5 w-5 rounded-full border-2 p-1 ${active ? "border-[#0b5ed7] bg-[#0b5ed7] bg-clip-content" : "border-slate-300"}`}
@@ -584,11 +643,11 @@ const Choice = ({
     </span>
   </button>
 );
-const BankDetails = ({ settings }: { settings: any }) => {
+const BankDetails = ({ settings, language }: { settings: any; language: "ar" | "en" }) => {
   const rows = [
-    ["البنك", settings.bankNameAr],
-    ["اسم صاحب الحساب", settings.bankAccountName],
-    ["رقم الحساب / CliQ", settings.cliqAlias],
+    [language === "ar" ? "البنك" : "Bank", settings.bankNameAr || settings.bankNameEn || settings.bankName],
+    [language === "ar" ? "اسم صاحب الحساب" : "Account holder", settings.bankAccountName],
+    [language === "ar" ? "رقم الحساب / CliQ" : "Account number / CliQ", settings.cliqAlias],
     ["IBAN", settings.bankIBAN],
   ].filter(([, value]) => value);
   return rows.length ? (
@@ -602,7 +661,7 @@ const BankDetails = ({ settings }: { settings: any }) => {
           <span
             className="flex items-center gap-2 text-left font-bold"
             dir={
-              label === "IBAN" || label === "رقم الحساب / CliQ"
+              label === "IBAN" || label === (language === "ar" ? "رقم الحساب / CliQ" : "Account number / CliQ")
                 ? "ltr"
                 : undefined
             }
@@ -610,7 +669,7 @@ const BankDetails = ({ settings }: { settings: any }) => {
             {value}
             <button
               type="button"
-              aria-label={`نسخ ${label}`}
+              aria-label={language === "ar" ? `نسخ ${label}` : `Copy ${label}`}
               onClick={() => navigator.clipboard?.writeText(String(value))}
               className="rounded p-1 text-[#0b5ed7] hover:bg-white"
             >
@@ -622,7 +681,9 @@ const BankDetails = ({ settings }: { settings: any }) => {
     </div>
   ) : (
     <p className="rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-800">
-      لم تتم إضافة بيانات التحويل بعد. يرجى مراجعة إدارة المتجر.
+      {language === "ar"
+        ? "لم تتم إضافة بيانات التحويل بعد. يرجى مراجعة إدارة المتجر."
+        : "No transfer details have been added yet. Please contact the store admin."}
     </p>
   );
 };
@@ -630,16 +691,18 @@ const Receipt = ({
   receipt,
   pick,
   remove,
+  language,
 }: {
   receipt: { name: string; size: number; dataUrl: string } | null;
   pick: () => void;
   remove: () => void;
+  language: "ar" | "en";
 }) =>
   receipt ? (
     <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
       <img
         src={receipt.dataUrl}
-        alt="معاينة إيصال التحويل"
+        alt={language === "ar" ? "معاينة إيصال التحويل" : "Transfer receipt preview"}
         className="h-16 w-16 rounded object-cover"
       />
       <span className="min-w-0 flex-1">
@@ -664,18 +727,22 @@ const Receipt = ({
       className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-sm font-bold text-slate-600 hover:border-[#0b5ed7]"
     >
       <Upload className="h-6 w-6 text-[#0b5ed7]" />
-      اختيار صورة
+      {language === "ar" ? "اختيار صورة" : "Choose image"}
       <small className="font-normal text-slate-400">
-        JPG، PNG أو WEBP حتى 5 MB
+        {language === "ar" ? "JPG، PNG أو WEBP حتى 5 MB" : "JPG, PNG or WEBP up to 5 MB"}
       </small>
     </button>
   );
 const Summary = ({
   cart,
   subtotal,
+  subtotalUSD,
   discount,
+  discountUsdAmount,
   shipping,
   total,
+  totalUSD,
+  exchangeRate,
   promo,
   setPromo,
   apply,
@@ -683,9 +750,13 @@ const Summary = ({
   remove,
   promoError,
   setPromoError,
+  formatPrice,
+  t,
+  copy,
+  language,
 }: any) => (
   <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 className="mb-4 text-lg font-black">ملخص الطلب</h2>
+    <h2 className="mb-4 text-lg font-black">{copy.summary}</h2>
     <div className="space-y-3">
       {cart.map((item: any) => (
         <div
@@ -700,9 +771,9 @@ const Summary = ({
           />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{item.product.nameAr}</p>
-            <p className="text-xs text-slate-500">الكمية: {item.quantity}</p>
+            <p className="text-xs text-slate-500">{copy.quantity}: {item.quantity}</p>
             <p className="text-sm font-black">
-              {(item.product.priceJOD * item.quantity).toFixed(2)} د.أ
+              {formatPrice(item.product.priceJOD * item.quantity, item.product.priceUSD * item.quantity)}
             </p>
           </div>
         </div>
@@ -715,7 +786,7 @@ const Summary = ({
         if (result.success) {
           setPromo("");
           setPromoError("");
-        } else setPromoError("رمز الخصم غير صالح أو منتهي.");
+        } else setPromoError(copy.promoInvalid);
       }}
       className="mt-5 flex gap-2"
     >
@@ -731,11 +802,11 @@ const Summary = ({
           <input
             value={promo}
             onChange={(event) => setPromo(event.target.value)}
-            placeholder="أدخل رمز الكوبون"
+            placeholder={copy.promoPlaceholder}
             className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-sm"
           />
-          <button className="rounded-lg bg-slate-900 px-4 text-sm font-bold text-white">
-            تطبيق
+            <button className="rounded-lg bg-slate-900 px-4 text-sm font-bold text-white">
+            {copy.apply}
           </button>
         </>
       )}
@@ -744,15 +815,15 @@ const Summary = ({
       <p className="mt-2 text-xs font-bold text-red-600">{promoError}</p>
     )}
     <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm">
-      <Line label="المجموع الفرعي" value={`${subtotal.toFixed(2)} د.أ`} />
-      <Line label="الخصم" value={`-${discount.toFixed(2)} د.أ`} green />
+      <Line label={t.checkoutSubtotal} value={formatPrice(subtotal, subtotalUSD)} />
+      <Line label={t.checkoutDiscount} value={`-${formatPrice(discount, discountUsdAmount)}`} green />
       <Line
-        label="التوصيل"
-        value={shipping ? `${shipping.toFixed(2)} د.أ` : "مجاني"}
+        label={language === "ar" ? "التوصيل" : "Delivery"}
+        value={shipping ? formatPrice(shipping, shipping * exchangeRate) : t.checkoutFree}
       />
       <div className="flex justify-between border-t border-slate-200 pt-4 font-black">
-        <span>الإجمالي</span>
-        <span className="text-2xl text-[#0b5ed7]">{total.toFixed(2)} د.أ</span>
+        <span>{copy.total}</span>
+        <span className="text-2xl text-[#0b5ed7]">{formatPrice(total, totalUSD)}</span>
       </div>
     </div>
   </section>
@@ -773,19 +844,19 @@ const Line = ({
     </span>
   </div>
 );
-const Empty = ({ navigateTo }: { navigateTo: (route: string) => void }) => (
-  <main dir="rtl" className="min-h-[70vh] bg-[#f7f8fa] px-4 py-20">
+const Empty = ({ navigateTo, language, copy }: { navigateTo: (route: string) => void; language: "ar" | "en"; copy: any }) => (
+  <main dir={language === "ar" ? "rtl" : "ltr"} className="min-h-[70vh] bg-[#f7f8fa] px-4 py-20">
     <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
       <ShoppingBag className="mx-auto h-14 w-14 text-[#0b5ed7]" />
-      <h1 className="mt-5 text-xl font-black">سلة التسوق فارغة</h1>
+      <h1 className="mt-5 text-xl font-black">{language === "ar" ? "سلة التسوق فارغة" : "Your cart is empty"}</h1>
       <p className="mt-2 text-sm text-slate-500">
-        أضف منتجات إلى السلة للمتابعة.
+        {language === "ar" ? "أضف منتجات إلى السلة للمتابعة." : "Add products to your cart to continue."}
       </p>
       <button
         onClick={() => navigateTo("#store")}
         className="mt-6 rounded-lg bg-[#0b5ed7] px-6 py-3 text-sm font-black text-white"
       >
-        العودة إلى المتجر
+        {copy.back}
       </button>
     </div>
   </main>
@@ -793,41 +864,44 @@ const Empty = ({ navigateTo }: { navigateTo: (route: string) => void }) => (
 const Success = ({
   order,
   navigateTo,
+  language,
+  formatPrice,
 }: {
   order: Order;
   navigateTo: (route: string) => void;
+  language: "ar" | "en";
+  formatPrice: (priceJOD: number, priceUSD?: number) => string;
 }) => (
-  <main dir="rtl" className="min-h-[70vh] bg-[#f7f8fa] px-4 py-12">
+  <main dir={language === "ar" ? "rtl" : "ltr"} className="min-h-[70vh] bg-[#f7f8fa] px-4 py-12">
     <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-7 text-center shadow-sm sm:p-10">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
         <CheckCircle2 className="h-9 w-9" />
       </div>
-      <p className="mt-6 font-bold text-emerald-600">تم استلام طلبك بنجاح</p>
-      <h1 className="mt-2 text-2xl font-black">شكراً لثقتك بمتجر قويدر</h1>
+      <p className="mt-6 font-bold text-emerald-600">{language === "ar" ? "تم استلام طلبك بنجاح" : "Your order was received successfully"}</p>
+      <h1 className="mt-2 text-2xl font-black">{language === "ar" ? "شكراً لثقتك بمتجر قويدر" : "Thank you for choosing QWADER STORE"}</h1>
       <div className="mt-7 space-y-3 rounded-lg bg-slate-50 p-5 text-sm">
-        <Line label="رقم الطلب" value={order.orderNumber} />
+        <Line label={language === "ar" ? "رقم الطلب" : "Order number"} value={order.orderNumber} />
         <Line
           label="الإجمالي"
-          value={`${Number(order.totalJOD || 0).toFixed(2)} د.أ`}
+          value={formatPrice(Number(order.totalJOD || 0), Number(order.totalUSD || 0))}
         />
-        <Line label="الحالة" value="بانتظار مراجعة الدفع" />
+        <Line label={language === "ar" ? "الحالة" : "Status"} value={language === "ar" ? "بانتظار مراجعة الدفع" : "Awaiting payment review"} />
       </div>
       <p className="mt-5 text-sm leading-6 text-slate-500">
-        سنراجع إيصال التحويل ونتواصل معك عند تأكيد الدفع. لم يتم اعتبار الدفع
-        مؤكداً بعد.
+        {language === "ar" ? "سنراجع إيصال التحويل ونتواصل معك عند تأكيد الدفع. لم يتم اعتبار الدفع مؤكداً بعد." : "We will review the transfer receipt and contact you after payment is confirmed."}
       </p>
       <div className="mt-7 flex flex-col gap-3 sm:flex-row">
         <button
           onClick={() => navigateTo(`#track-order/${order.orderNumber}`)}
           className="flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#0b5ed7] text-sm font-black text-white"
         >
-          متابعة الطلب
+          {language === "ar" ? "متابعة الطلب" : "Track order"}
         </button>
         <button
           onClick={() => navigateTo("#store")}
           className="min-h-11 flex-1 rounded-lg border border-slate-300 text-sm font-black"
         >
-          العودة إلى المتجر
+          {language === "ar" ? "العودة إلى المتجر" : "Back to store"}
         </button>
       </div>
     </div>

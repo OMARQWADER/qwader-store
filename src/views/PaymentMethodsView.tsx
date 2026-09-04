@@ -66,7 +66,7 @@ export const PaymentMethodsView: React.FC = () => {
 
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">الاسم المستعار (Alias):</span>
+              <span className="text-slate-400">{language === 'ar' ? 'الاسم المستعار (Alias):' : 'CliQ Alias:'}</span>
               <div className="flex items-center gap-1.5">
                 <span className="font-mono font-black text-violet-300">{state.settings.cliqAlias}</span>
                 <button
@@ -79,7 +79,7 @@ export const PaymentMethodsView: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">رقم الهاتف (Mobile):</span>
+              <span className="text-slate-400">{language === 'ar' ? 'رقم الهاتف (Mobile):' : 'Mobile:'}</span>
               <div className="flex items-center gap-1.5">
                 <span className="font-mono font-bold text-slate-200" dir="ltr">{state.settings.cliqMobile}</span>
                 <button
@@ -109,15 +109,15 @@ export const PaymentMethodsView: React.FC = () => {
 
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">البنك:</span>
-              <span className="font-bold text-slate-200">{state.settings.bankName}</span>
+              <span className="text-slate-400">{language === 'ar' ? 'البنك:' : 'Bank:'}</span>
+              <span className="font-bold text-slate-200">{language === 'ar' ? state.settings.bankNameAr : state.settings.bankNameEn}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">اسم المستفيد:</span>
+              <span className="text-slate-400">{language === 'ar' ? 'اسم المستفيد:' : 'Account holder:'}</span>
               <span className="font-bold text-slate-200">{state.settings.bankAccountName}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">الآيبان:</span>
+              <span className="text-slate-400">{language === 'ar' ? 'الآيبان:' : 'IBAN:'}</span>
               <div className="flex items-center gap-1.5">
                 <span className="font-mono text-[10px] text-slate-300 truncate max-w-[110px]" dir="ltr">{state.settings.bankIban}</span>
                 <button
@@ -146,8 +146,8 @@ export const PaymentMethodsView: React.FC = () => {
           </p>
 
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5 text-xs">
-            <div className="text-slate-300 font-bold">📍 عمان - الأردن</div>
-            <div className="text-slate-400 text-[11px]">التنسيق المسبق عبر الواتساب قبل الاستلام.</div>
+            <div className="text-slate-300 font-bold">📍 {language === 'ar' ? 'عمان - الأردن' : 'Amman, Jordan'}</div>
+            <div className="text-slate-400 text-[11px]">{language === 'ar' ? 'التنسيق المسبق عبر الواتساب قبل الاستلام.' : 'Please coordinate via WhatsApp before pickup.'}</div>
           </div>
         </div>
       </div>

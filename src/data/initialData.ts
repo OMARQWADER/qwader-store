@@ -26,16 +26,17 @@ export const INITIAL_STATE: StoreState = {
     isMaintenanceMode: false,
     maintenanceMessageAr: 'نقوم حالياً بأعمال صيانة دورية وتحديث العروض الحصرية لخدمتكم بشكل أفضل، بنرجع خلال وقت قصير يا غالي!',
     maintenanceMessageEn: 'We are currently performing routine upgrades. We will be back online very shortly!',
+    showPromoBanner: true,
     defaultCurrency: 'JOD',
     usdExchangeRate: 1.41, // 1 JOD = 1.41 USD
     lowStockGlobalThreshold: 5,
     socialLinks: {
       whatsapp: 'https://wa.me/962791234567',
-      facebook: 'https://facebook.com/qwaderstore',
+      facebook: '',
       instagram: 'https://instagram.com/qwaderstore',
-      tiktok: 'https://tiktok.com/@qwaderstore',
+      tiktok: '',
       twitter: 'https://x.com/qwaderstore',
-      youtube: 'https://youtube.com/@qwaderstore',
+      youtube: '',
       telegram: 'https://t.me/qwaderstore',
       discord: 'https://discord.gg/qwader',
       snapchat: '',
@@ -81,6 +82,7 @@ export const INITIAL_STATE: StoreState = {
         { id: 'cmp-qwader', nameAr: 'مندوب قويدر ستور المباشر (عمان وضواحيها)', nameEn: 'Qwader Direct Courier', phone: '+962 7 9123 4567', trackingUrl: '', estimatedDaysAr: 'توصيل فوري بنفس اليوم', estimatedDaysEn: 'Same Day Delivery', active: true },
       ],
     },
+    featuredPromoCode: null,
   },
   products: [
     // --- 1. PlayStation Games (ألعاب PlayStation) ---

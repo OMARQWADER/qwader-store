@@ -103,7 +103,7 @@ export const CartDrawer: React.FC<{ isOpen?: boolean; onClose?: () => void }> = 
         id="cart-drawer-backdrop"
         onClick={() => setIsCartOpen(false)}
         aria-hidden="true"
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity animate-in fade-in pointer-events-auto"
+        className="absolute inset-0 bg-transparent transition-opacity animate-in fade-in pointer-events-auto"
       />
 
       <div className="fixed inset-y-0 end-0 max-w-full flex pointer-events-none">
@@ -120,7 +120,7 @@ export const CartDrawer: React.FC<{ isOpen?: boolean; onClose?: () => void }> = 
               <div>
                 <h2 className="text-base font-bold font-cairo">{t.cart}</h2>
                 <p className="text-xs text-slate-400">
-                  {cart.length} {language === 'ar' ? 'عناصر مختارة' : 'selected items'}
+                  {cart.length} {t.cartItems}
                 </p>
               </div>
             </div>
@@ -150,7 +150,7 @@ export const CartDrawer: React.FC<{ isOpen?: boolean; onClose?: () => void }> = 
           </div>
 
           {/* Cart Items List */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-3" role="list" aria-label="Cart items">
+          <div className="flex-1 overflow-y-auto p-5 space-y-3" role="list" aria-label={t.cartItems}>
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6">
                 <div className="w-20 h-20 rounded-full bg-purple-950/40 border border-purple-500/20 flex items-center justify-center mb-4 text-purple-400" aria-hidden="true">
@@ -223,7 +223,7 @@ export const CartDrawer: React.FC<{ isOpen?: boolean; onClose?: () => void }> = 
                         >
                           <Minus className="w-3 h-3" aria-hidden="true" />
                         </button>
-                        <span className="text-xs font-bold text-slate-200 px-1" aria-label={`Quantity: ${item.quantity}`}>{item.quantity}</span>
+                        <span className="text-xs font-bold text-slate-200 px-1" aria-label={`${t.quantity}: ${item.quantity}`}>{item.quantity}</span>
                         <button
                           id={`qty-increase-${item.product.id}`}
                           onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)}
@@ -309,8 +309,8 @@ export const CartDrawer: React.FC<{ isOpen?: boolean; onClose?: () => void }> = 
                   </div>
                 )}
                 <div className="flex justify-between text-xs text-slate-400">
-                  <span>{language === 'ar' ? 'التسليم الرقمي الفوري' : 'Instant Delivery'}</span>
-                  <span className="text-emerald-400 font-bold">{language === 'ar' ? 'مجاني ⚡' : 'FREE ⚡'}</span>
+                  <span>{t.instantDelivery}</span>
+                  <span className="text-emerald-400 font-bold">{t.free} ⚡</span>
                 </div>
                 <div className="flex justify-between items-center text-base font-extrabold text-slate-100 pt-2 border-t border-white/10">
                   <span className="font-cairo">{t.cartTotal}</span>

@@ -1,4 +1,18 @@
+import { normalizeProduct, normalizeUserRecord } from "./productNormalize";
+
 const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
+const TOKEN_KEY = "qwader_api_token";
+
+const getAuthHeaders = (): HeadersInit => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const storeToken = (token?: string) => {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+};
+
+export const clearApiToken = () => localStorage.removeItem(TOKEN_KEY);
 
 const ensureArray = (data: any): any[] => {
   if (!data) return [];
@@ -7,14 +21,7 @@ const ensureArray = (data: any): any[] => {
   return [];
 };
 
-const normalizeUser = (user: any) =>
-  user
-    ? {
-        ...user,
-        registeredAt:
-          user.registeredAt || user.registered_at || new Date().toISOString(),
-      }
-    : user;
+const normalizeUser = (user: any) => normalizeUserRecord(user);
 
 const normalizeOrder = (order: any) =>
   order
@@ -46,14 +53,39 @@ const normalizeOrder = (order: any) =>
       }
     : order;
 
+const normalizeSupportTicket = (ticket: any) => ticket ? ({
+  ...ticket,
+  userId: ticket.userId || ticket.user_id,
+  userName: ticket.userName || ticket.user_name,
+  userEmail: ticket.userEmail || ticket.user_email,
+  userPhone: ticket.userPhone || ticket.user_phone,
+  orderNumber: ticket.orderNumber || ticket.order_number,
+  createdAt: ticket.createdAt || ticket.created_at,
+  updatedAt: ticket.updatedAt || ticket.updated_at,
+  lastActivity: ticket.lastActivity || ticket.updated_at || ticket.created_at,
+  messages: Array.isArray(ticket.messages) ? ticket.messages.map((message: any) => ({
+    ...message,
+    senderId: message.senderId || message.sender_id,
+    senderName: message.senderName || message.sender_name,
+    senderRole: message.senderRole || message.sender_role,
+    text: message.text || message.message,
+    createdAt: message.createdAt || message.created_at,
+  })) : [],
+}) : ticket;
+
 const requestJson = async (input: RequestInfo | URL, init?: RequestInit) => {
-  const response = await fetch(input, init);
-  const data = await response.json();
+  const headers = {
+    ...(init?.headers || {}),
+    ...getAuthHeaders(),
+  };
+  const response = await fetch(input, { ...init, headers });
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(
       data?.error || `API request failed with status ${response.status}`,
     );
   }
+  if (data?.token) storeToken(data.token);
   return data;
 };
 
@@ -83,8 +115,21 @@ export const api = {
     }),
   getProducts: async () => {
     const data = await requestJson(`${API_URL}/products`);
-    return ensureArray(data);
+    return ensureArray(data).map(normalizeProduct);
   },
+  getStoreConfig: async () => requestJson(`${API_URL}/store-config`),
+  saveStoreConfig: (payload: any) =>
+    requestJson(`${API_URL}/store-config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  updateUserRole: (id: string, role: string, permissions: string[] = []) =>
+    requestJson(`${API_URL}/users/${id}/role`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, permissions }),
+    }),
   getProduct: (id: string) => requestJson(`${API_URL}/products/${id}`),
   createProduct: (product: any) =>
     requestJson(`${API_URL}/products`, {
@@ -130,8 +175,8 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     }),
-  getReviews: async (productId: string) => {
-    const data = await requestJson(`${API_URL}/reviews/product/${productId}`);
+  getReviews: async (productId?: string) => {
+    const data = await requestJson(productId ? `${API_URL}/reviews/product/${productId}` : `${API_URL}/reviews`);
     return ensureArray(data);
   },
   addReview: (review: any) =>
@@ -158,4 +203,42 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product_ids: productIds }),
     }),
+  getSupportTickets: async () => {
+    const data = await requestJson(`${API_URL}/support/tickets`);
+    return ensureArray(data).map(normalizeSupportTicket);
+  },
+  createSupportTicket: (payload: any) =>
+    requestJson(`${API_URL}/support/tickets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then(normalizeSupportTicket),
+  addSupportMessage: (ticketId: string, message: string) =>
+    requestJson(`${API_URL}/support/tickets/${ticketId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    }).then(normalizeSupportTicket),
+  updateSupportTicketStatus: (ticketId: string, status: string) =>
+    requestJson(`${API_URL}/support/tickets/${ticketId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }).then(normalizeSupportTicket),
+  getSuppliers: async () => ensureArray(await requestJson(`${API_URL}/suppliers`)),
+  createSupplier: (payload: any) =>
+    requestJson(`${API_URL}/suppliers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  updateSupplier: (id: string, payload: any) =>
+    requestJson(`${API_URL}/suppliers/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  deleteSupplier: (id: string) => requestJson(`${API_URL}/suppliers/${id}`, { method: "DELETE" }),
+  askSupportAI: (ticketId: string) =>
+    requestJson(`${API_URL}/support/tickets/${ticketId}/ai-reply`, { method: "POST" }).then(normalizeSupportTicket),
 };

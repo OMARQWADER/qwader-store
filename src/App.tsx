@@ -5,25 +5,44 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { CartDrawer } from './components/layout/CartDrawer';
 import { MaintenanceScreen } from './components/common/MaintenanceScreen';
+import { CartChoiceModal } from './components/common/CartChoiceModal';
 import { TwoStepVerificationModal } from './components/common/TwoStepVerificationModal';
 import { ToastContainer } from './components/common/ToastContainer';
 
 import { HomeView } from './views/HomeView';
 
-const StoreView = lazy(() => import('./views/StoreView').then(m => ({ default: m.StoreView })));
-const ProductDetailView = lazy(() => import('./views/ProductDetailView').then(m => ({ default: m.ProductDetailView })));
-const CheckoutView = lazy(() => import('./views/CheckoutView').then(m => ({ default: m.CheckoutView })));
-const OrdersView = lazy(() => import('./views/OrdersView').then(m => ({ default: m.OrdersView })));
-const FavoritesView = lazy(() => import('./views/FavoritesView').then(m => ({ default: m.FavoritesView })));
-const CompareView = lazy(() => import('./views/CompareView').then(m => ({ default: m.CompareView })));
-const AccountView = lazy(() => import('./views/AccountView').then(m => ({ default: m.AccountView })));
-const SupportView = lazy(() => import('./views/SupportView').then(m => ({ default: m.SupportView })));
-const PaymentMethodsView = lazy(() => import('./views/PaymentMethodsView').then(m => ({ default: m.PaymentMethodsView })));
-const AboutView = lazy(() => import('./views/AboutView').then(m => ({ default: m.AboutView })));
-const AdminDashboardView = lazy(() => import('./views/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
-const OrderTrackingView = lazy(() => import('./views/OrderTrackingView').then(m => ({ default: m.OrderTrackingView })));
-const LoginView = lazy(() => import('./views/LoginView'));
-const RegisterView = lazy(() => import('./views/RegisterView'));
+const lazyWithRecovery = <T extends React.ComponentType<any>>(load: () => Promise<{ default: T }>) =>
+  lazy(async () => {
+    try {
+      const module = await load();
+      sessionStorage.removeItem('qwader:chunk-reload');
+      return module;
+    } catch (error) {
+      const hasRetried = sessionStorage.getItem('qwader:chunk-reload') === '1';
+      if (!hasRetried) {
+        sessionStorage.setItem('qwader:chunk-reload', '1');
+        const url = new URL(window.location.href);
+        url.searchParams.set('chunk-reload', Date.now().toString());
+        window.location.replace(url.toString());
+      }
+      throw error;
+    }
+  });
+
+const StoreView = lazyWithRecovery(() => import('./views/StoreView').then(m => ({ default: m.StoreView })));
+const ProductDetailView = lazyWithRecovery(() => import('./views/ProductDetailView').then(m => ({ default: m.ProductDetailView })));
+const CheckoutView = lazyWithRecovery(() => import('./views/CheckoutView').then(m => ({ default: m.CheckoutView })));
+const OrdersView = lazyWithRecovery(() => import('./views/OrdersView').then(m => ({ default: m.OrdersView })));
+const FavoritesView = lazyWithRecovery(() => import('./views/FavoritesView').then(m => ({ default: m.FavoritesView })));
+const CompareView = lazyWithRecovery(() => import('./views/CompareView').then(m => ({ default: m.CompareView })));
+const AccountView = lazyWithRecovery(() => import('./views/AccountView').then(m => ({ default: m.AccountView })));
+const SupportView = lazyWithRecovery(() => import('./views/SupportView').then(m => ({ default: m.SupportView })));
+const PaymentMethodsView = lazyWithRecovery(() => import('./views/PaymentMethodsView').then(m => ({ default: m.PaymentMethodsView })));
+const AboutView = lazyWithRecovery(() => import('./views/AboutView').then(m => ({ default: m.AboutView })));
+const AdminDashboardView = lazyWithRecovery(() => import('./views/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
+const OrderTrackingView = lazyWithRecovery(() => import('./views/OrderTrackingView').then(m => ({ default: m.OrderTrackingView })));
+const LoginView = lazyWithRecovery(() => import('./views/LoginView'));
+const RegisterView = lazyWithRecovery(() => import('./views/RegisterView'));
 
 import { MessageCircle, AlertTriangle } from 'lucide-react';
 
@@ -135,6 +154,7 @@ const AppContent: React.FC = () => {
         <Suspense fallback={<RouteLoadingFallback />}>{renderView()}</Suspense>
       </main>
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <CartChoiceModal />
       <TwoStepVerificationModal />
       <ToastContainer />
       <button

@@ -11,6 +11,36 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+CREATE TABLE IF NOT EXISTS store_config (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+INSERT INTO store_config (id, data) VALUES ('default', '{}'::jsonb) ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS suppliers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  phone TEXT,
+  email TEXT,
+  supplier_type TEXT NOT NULL DEFAULT 'general',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS supplier_type TEXT NOT NULL DEFAULT 'general';
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_suppliers_status ON suppliers(status);
+
+ALTER TABLE support_messages ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -111,8 +141,38 @@ CREATE TABLE IF NOT EXISTS wishlists (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Support tickets and threaded messages
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  order_number TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id TEXT PRIMARY KEY,
+  ticket_id TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+  sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sender_role TEXT NOT NULL DEFAULT 'customer',
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  is_read BOOLEAN DEFAULT false
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews(product_id);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+
+CREATE TABLE IF NOT EXISTS product_suppliers (
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  supplier_id TEXT NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+  PRIMARY KEY (product_id, supplier_id)
+);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_messages_ticket_id ON support_messages(ticket_id);

@@ -22,7 +22,7 @@ export const AboutView: React.FC = () => {
         </div>
 
         <h1 className="text-2xl sm:text-4xl font-black text-slate-100 mb-3 font-cairo">
-          {language === 'ar' ? 'من نحن — قصة متجر قويدر (QWADER STORE)' : 'About QWADER STORE'}
+          {language === 'ar' ? state.settings.storeNameAr : state.settings.storeNameEn}
         </h1>
 
         <p className="text-xs sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">

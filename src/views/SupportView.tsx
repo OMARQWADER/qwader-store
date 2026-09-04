@@ -43,11 +43,11 @@ export const SupportView: React.FC = () => {
 
   const activeTicket = state.supportTickets.find((tk) => tk.id === selectedTicketId);
 
-  const handleCreateTicket = (e: React.FormEvent) => {
+  const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubject.trim() || !newInitialMessage.trim()) return;
 
-    const res = createSupportTicket(newSubject.trim(), newCategory, newInitialMessage.trim());
+    const res = await createSupportTicket(newSubject.trim(), newCategory, newInitialMessage.trim());
     if (res.success && res.ticket) {
       setSelectedTicketId(res.ticket.id);
       setIsCreatingNew(false);
@@ -79,12 +79,10 @@ export const SupportView: React.FC = () => {
             <span>{t.support}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-100 font-cairo">
-            {language === 'ar' ? 'مركز الدعم الفني وتذاكر المساعدة' : 'Support Center & Tickets'}
+            {t.supportCenter}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {language === 'ar'
-              ? 'مساعدة مباشرة في تفعيل الحسابات وشحن بطاقات الستور والطلبات'
-              : 'Direct assistance for account activation, wallet top-ups, and orders'}
+            {t.supportDescription}
           </p>
         </div>
 
@@ -95,7 +93,7 @@ export const SupportView: React.FC = () => {
             className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-900/30 font-cairo"
           >
             <Plus className="w-4 h-4" />
-            <span>{language === 'ar' ? 'فتح تذكرة جديدة' : 'New Ticket'}</span>
+            <span>{t.newTicket}</span>
           </button>
 
           <button
@@ -104,7 +102,7 @@ export const SupportView: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-900/30"
           >
             <MessageCircle className="w-4 h-4" />
-            <span>{language === 'ar' ? 'واتساب مباشر' : 'WhatsApp'}</span>
+            <span>{t.whatsapp}</span>
           </button>
         </div>
       </div>
@@ -115,13 +113,13 @@ export const SupportView: React.FC = () => {
         {/* Tickets Sidebar List (4 cols) */}
         <div className="lg:col-span-4 space-y-3">
           <h3 className="text-xs font-bold text-slate-400 px-1 font-cairo">
-            {language === 'ar' ? 'التذاكر والمحادثات المفتوحة' : 'Your Support Tickets'} ({userTickets.length})
+            {t.supportTicketsOpen} ({userTickets.length})
           </h3>
 
           <div className="space-y-2 max-h-[500px] overflow-y-auto">
             {userTickets.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-6 glass-panel border border-white/10 rounded-2xl">
-                {language === 'ar' ? 'لا توجد تذاكر دعم مفتوحة' : 'No tickets opened'}
+                {t.noSupportTickets}
               </p>
             ) : (
               userTickets.map((tk) => {
@@ -150,7 +148,7 @@ export const SupportView: React.FC = () => {
                     </div>
                     <h4 className="text-xs font-bold text-slate-100 truncate">{tk.subject}</h4>
                     <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                      {tk.messages[tk.messages.length - 1]?.text}
+                      {tk.messages?.[tk.messages.length - 1]?.text || ''}
                     </p>
                     <span className="text-[10px] text-slate-500 mt-2 block">
                       {new Date(tk.updatedAt).toLocaleDateString(language === 'ar' ? 'ar-JO' : 'en-US')}
@@ -168,13 +166,13 @@ export const SupportView: React.FC = () => {
             /* New Ticket Form */
             <div className="p-6 rounded-3xl glass-card border border-white/10 space-y-4">
               <h3 className="text-base font-bold text-slate-100 font-cairo">
-                {language === 'ar' ? 'إنشاء تذكرة دعم فني جديدة' : 'Create Support Ticket'}
+                {t.createSupportTicket}
               </h3>
 
               <form onSubmit={handleCreateTicket} className="space-y-4">
                 <div>
                   <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    {language === 'ar' ? 'عنوان المشكلة / الموضوع' : 'Subject'} *
+                    {t.ticketSubject} *
                   </label>
                   <input
                     type="text"
@@ -188,7 +186,7 @@ export const SupportView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    {language === 'ar' ? 'تصنيف الطلب' : 'Category'}
+                    {t.ticketCategory}
                   </label>
                   <select
                     value={newCategory}
@@ -204,7 +202,7 @@ export const SupportView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs text-slate-300 font-semibold mb-1">
-                    {language === 'ar' ? 'تفاصيل الرسالة أو المشكلة' : 'Message Details'} *
+                    {t.ticketDetails} *
                   </label>
                   <textarea
                     required
@@ -221,14 +219,14 @@ export const SupportView: React.FC = () => {
                     type="submit"
                     className="px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-900/30 transition-all font-cairo"
                   >
-                    {language === 'ar' ? 'إرسال التذكرة' : 'Send Ticket'}
+                    {t.sendTicket}
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsCreatingNew(false)}
                     className="px-4 py-2.5 rounded-full glass-panel border border-white/10 text-slate-400 text-xs font-bold"
                   >
-                    {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    {t.cancelAction}
                   </button>
                 </div>
               </form>
@@ -297,7 +295,7 @@ export const SupportView: React.FC = () => {
                   type="text"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={language === 'ar' ? 'اكتب ردك هنا...' : 'Type your reply...'}
+                  placeholder={t.ticketReplyPlaceholder}
                   className="flex-1 px-3.5 py-2.5 rounded-full text-xs bg-white/5 border border-white/10 text-slate-100 focus:border-purple-500 focus:outline-none"
                 />
                 <button
@@ -305,7 +303,7 @@ export const SupportView: React.FC = () => {
                   className="px-5 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{language === 'ar' ? 'إرسال' : 'Send'}</span>
+                  <span>{t.sendAction}</span>
                 </button>
               </form>
             </div>
@@ -313,7 +311,7 @@ export const SupportView: React.FC = () => {
             <div className="p-12 rounded-3xl glass-panel border border-white/10 text-center">
               <Headphones className="w-12 h-12 text-slate-600 mx-auto mb-3" />
               <p className="text-xs text-slate-400">
-                {language === 'ar' ? 'حدد تذكرة لعرض المحادثة أو افتح تذكرة جديدة' : 'Select a ticket to view thread'}
+                {t.selectTicket}
               </p>
             </div>
           )}

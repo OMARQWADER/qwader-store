@@ -220,7 +220,7 @@ export const CompareView: React.FC = () => {
                     <button
                       id={`compare-add-to-cart-${p.id}`}
                       onClick={() => addToCart(p, 1)}
-                      disabled={p.stockQuantity <= 0}
+                      disabled={false}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full bg-purple-600 hover:bg-purple-500 disabled:bg-slate-800 text-white font-bold text-xs transition-all shadow-lg shadow-purple-900/30"
                     >
                       <ShoppingCart className="w-3.5 h-3.5" />

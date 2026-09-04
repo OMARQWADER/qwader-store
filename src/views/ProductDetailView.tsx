@@ -64,8 +64,8 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId 
   const isFavorite = isInWishlist(product.id);
   const isCompared = isInCompare(product.id);
   const isBestSeller = bestSellerProductIds.slice(0, 4).includes(product.id);
-  const isOutOfStock = product.stockQuantity <= 0;
-  const isLowStock = !isOutOfStock && product.stockQuantity <= product.lowStockThreshold;
+  const isOutOfStock = false;
+  const isLowStock = false;
 
   const productReviews = useMemo(() => {
     return state.reviews.filter((r) => r.productId === product.id);

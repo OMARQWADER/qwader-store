@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Product, Order, OrderStatus, UserRole, ProductCategory, Review, GovernorateRate, DeliveryCompany } from '../types';
+import { Product, Order, OrderStatus, UserRole, ProductCategory, Review, GovernorateRate, DeliveryCompany, Supplier, StaffPermission } from '../types';
 import { exportOrdersToCsv } from '../utils/exportCsv';
 import {
   AreaChart,
@@ -65,7 +65,9 @@ import {
   Copy,
   Info,
   Save,
+  Sparkles,
 } from 'lucide-react';
+import { api } from '../lib/api';
 
 export const AdminDashboardView: React.FC = () => {
   const {
@@ -105,8 +107,29 @@ export const AdminDashboardView: React.FC = () => {
   const [adminLinkSent, setAdminLinkSent] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'orders' | 'products' | 'promos' | 'branding' | 'socials' | 'fulfillment' | 'users' | 'reviews' | 'support' | 'settings' | 'backup'
+    'overview' | 'orders' | 'products' | 'promos' | 'branding' | 'socials' | 'fulfillment' | 'suppliers' | 'users' | 'reviews' | 'support' | 'settings' | 'backup'
   >('overview');
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [supplierStatusFilter, setSupplierStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [supplierFormOpen, setSupplierFormOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', email: '', supplierType: 'general', status: 'active' as 'active' | 'inactive', notes: '' });
+  const [editingPermissionsUserId, setEditingPermissionsUserId] = useState<string | null>(null);
+  const [draftPermissions, setDraftPermissions] = useState<StaffPermission[]>([]);
+  const permissionOptions: Array<{ id: StaffPermission; ar: string; en: string }> = [
+    { id: 'products.manage', ar: 'إدارة المنتجات', en: 'Products' },
+    { id: 'orders.manage', ar: 'إدارة الطلبات', en: 'Orders' },
+    { id: 'customers.manage', ar: 'إدارة العملاء', en: 'Customers' },
+    { id: 'support.manage', ar: 'إدارة الدعم', en: 'Support' },
+    { id: 'suppliers.manage', ar: 'إدارة الموردين', en: 'Suppliers' },
+    { id: 'promotions.manage', ar: 'الكوبونات والعروض', en: 'Promotions' },
+    { id: 'settings.manage', ar: 'إدارة الإعدادات', en: 'Settings' },
+    { id: 'reports.view', ar: 'مشاهدة التقارير', en: 'Reports' },
+    { id: 'staff.manage', ar: 'إدارة الموظفين', en: 'Staff' },
+    { id: 'content.manage', ar: 'إدارة المحتوى', en: 'Content' },
+  ];
 
   // Promo Code Form State
   const [newPromoCode, setNewPromoCode] = useState('');
@@ -178,6 +201,8 @@ export const AdminDashboardView: React.FC = () => {
     (state?.supportTickets || [])[0]?.id || null
   );
   const [adminReplyText, setAdminReplyText] = useState('');
+  const [isAiReplying, setIsAiReplying] = useState(false);
+  const [aiReplyError, setAiReplyError] = useState('');
   const orders = Array.isArray(state?.orders) ? state.orders : [];
 
   // Unconditional useMemo hooks and analytics calculations
@@ -223,9 +248,7 @@ export const AdminDashboardView: React.FC = () => {
       return {
         totalRevenueJOD: completedOrders.reduce((sum, o) => sum + (Number(o.totalJOD) || 0), 0),
         totalRevenueUSD: completedOrders.reduce((sum, o) => sum + (Number(o.totalUSD) || 0), 0),
-        lowStockProducts: (state?.products || []).filter(
-          (p) => p && p.stockQuantity <= p.lowStockThreshold
-        ),
+        lowStockProducts: [],
       };
     } catch (error) {
       console.error('Failed to calculate admin order analytics:', error);
@@ -338,9 +361,9 @@ export const AdminDashboardView: React.FC = () => {
     };
 
     if (editingProduct) {
-      updateProduct(editingProduct.id, productPayload);
+      void updateProduct({ ...editingProduct, ...productPayload } as Product);
     } else {
-      addProduct(productPayload as any);
+      void addProduct(productPayload as any);
     }
     setIsProductModalOpen(false);
   };
@@ -368,17 +391,20 @@ export const AdminDashboardView: React.FC = () => {
     setAdminReplyText('');
   };
 
+  const handleAiReply = async () => {
+    if (!selectedSupportTicketId) return;
+    setIsAiReplying(true);
+    setAiReplyError('');
+    try {
+      await api.askSupportAI(selectedSupportTicketId);
+      await refreshSupportTickets();
+    } catch (error: any) {
+      setAiReplyError(error?.message || (language === 'ar' ? 'تعذر إنشاء رد آلي' : 'AI reply failed'));
+    } finally { setIsAiReplying(false); }
+  };
+
   const handleRoleChangeWithVerification = (userId: string, newRole: UserRole, targetUserName: string) => {
-    requestSensitiveActionVerification({
-      actionType: 'role_update',
-      titleAr: `تغيير صلاحية المستخدم (${targetUserName}) إلى (${newRole.toUpperCase()})`,
-      titleEn: `Change role for ${targetUserName} to ${newRole.toUpperCase()}`,
-      descriptionAr: 'تغيير صلاحيات الحسابات إلى مشرف أو مالك يتطلب تأكيداً أمنياً برمز 6 أرقام مرسل لبريدك الإلكتروني.',
-      descriptionEn: 'Promoting or changing user access roles requires two-step verification code confirmation.',
-      onSuccess: () => {
-        updateUserRole(userId, newRole);
-      },
-    });
+    updateUserRole(userId, newRole);
   };
 
   const handleFactoryResetWithVerification = () => {
@@ -399,22 +425,42 @@ export const AdminDashboardView: React.FC = () => {
   // RBAC Permission checks
   const isOwner = currentUser?.role === 'owner';
   const isStaff = currentUser?.role === 'staff' || isOwner;
+  const can = (permission: StaffPermission) => isOwner || currentUser?.permissions?.includes(permission);
 
-  const handleAdminDirectLogin = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (activeTab === 'suppliers') void loadSuppliers();
+  }, [activeTab, currentUser?.id]);
+
+  const loadSuppliers = async () => {
+    if (!can('suppliers.manage')) return;
+    try {
+      const data = await api.getSuppliers();
+      setSuppliers(data.map((supplier: any) => ({
+        ...supplier,
+        supplierType: supplier.supplierType || supplier.supplier_type || 'general',
+        productIds: supplier.productIds || supplier.product_ids || [],
+      })));
+    } catch (error) { console.error('Failed to load suppliers:', error); }
+  };
+
+  const saveSupplier = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!supplierForm.name.trim()) return;
+    const payload = { name: supplierForm.name, phone: supplierForm.phone, email: supplierForm.email, supplier_type: supplierForm.supplierType, status: supplierForm.status, notes: supplierForm.notes, product_ids: [] };
+    try {
+      if (editingSupplier) await api.updateSupplier(editingSupplier.id, payload);
+      else await api.createSupplier(payload);
+      setSupplierFormOpen(false);
+      setEditingSupplier(null);
+      setSupplierForm({ name: '', phone: '', email: '', supplierType: 'general', status: 'active', notes: '' });
+      await loadSuppliers();
+      triggerSaveNotification(language === 'ar' ? 'الموردين' : 'Suppliers');
+    } catch (error) { console.error('Failed to save supplier:', error); }
+  };
+
+  const handleAdminDirectLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setAdminLoginError('');
-    if (!adminEmail.trim()) {
-      setAdminLoginError(language === 'ar' ? 'يرجى إدخال البريد الإلكتروني للمسؤول' : 'Please enter admin email');
-      return;
-    }
-    setIsAdminLoggingIn(true);
-    const res = await requestAdminLoginLink(adminEmail);
-    setIsAdminLoggingIn(false);
-    if (res.success) {
-      setAdminLinkSent(true);
-    } else {
-      setAdminLoginError(res.error || (language === 'ar' ? 'بيانات الدخول غير صحيحة، يرجى التأكد والمحاولة مجدداً' : 'Login failed'));
-    }
+    navigateTo('#account');
   };
 
   if (!currentUser || (!isOwner && !isStaff)) {
@@ -440,8 +486,8 @@ export const AdminDashboardView: React.FC = () => {
               </h2>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                 {language === 'ar'
-                ? 'أدخل بريد حساب الإدارة وسنرسل رابط دخول إلى بريدك الإلكتروني.'
-                : 'Enter your admin email and we will send a sign-in link.'}
+                ? 'سجّل الدخول أولاً عبر Google أو رمز البريد الإلكتروني، ثم عد إلى لوحة الإدارة.'
+                : 'Sign in with Google or email OTP first, then return to the Admin Panel.'}
               </p>
             </div>
           </div>
@@ -465,7 +511,7 @@ export const AdminDashboardView: React.FC = () => {
                 required
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
-                placeholder="admin@qwaderstore.jo"
+                placeholder="owner@example.com"
                 className="w-full px-4 py-3 rounded-2xl bg-slate-900/90 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
               />
             </div>
@@ -476,7 +522,7 @@ export const AdminDashboardView: React.FC = () => {
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 hover:brightness-110 active:scale-[0.99] text-white font-black text-sm shadow-xl shadow-purple-900/40 transition-all font-cairo flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-4 h-4" />
-              <span>{language === 'ar' ? 'إرسال رابط الدخول' : 'Send sign-in link'}</span>
+              <span>{language === 'ar' ? 'الانتقال إلى تسجيل الدخول الآمن' : 'Continue to secure sign in'}</span>
             </button>
             {adminLinkSent && (
               <p className="text-center text-xs text-emerald-300">
@@ -616,22 +662,23 @@ export const AdminDashboardView: React.FC = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-white/10">
         {[
           { id: 'overview', label: t.tabOverview, icon: TrendingUp },
-          { id: 'orders', label: t.tabOrders, icon: Package, badge: orders.filter((o) => o.status === 'pending_payment' || o.status === 'pending').length },
-          { id: 'products', label: t.tabProducts, icon: ShoppingBag, badge: lowStockProducts.length },
-          { id: 'promos', label: language === 'ar' ? 'كوبونات الخصم' : 'Promo Codes', icon: Tag },
+          { id: 'orders', label: t.tabOrders, icon: Package, permission: 'orders.manage' as StaffPermission, badge: orders.filter((o) => o.status === 'pending_payment' || o.status === 'pending').length },
+          { id: 'products', label: t.tabProducts, icon: ShoppingBag, permission: 'products.manage' as StaffPermission, badge: lowStockProducts.length },
+          { id: 'promos', label: language === 'ar' ? 'كوبونات الخصم' : 'Promo Codes', icon: Tag, permission: 'promotions.manage' as StaffPermission },
           { id: 'branding', label: language === 'ar' ? 'الهوية والشعار' : 'Logo & Branding', icon: Palette },
           { id: 'socials', label: language === 'ar' ? 'حسابات التواصل' : 'Social Accounts', icon: Share2 },
-          { id: 'fulfillment', label: language === 'ar' ? 'الشحن والتوصيل والمحافظات' : 'Fulfillment & Shipping', icon: Truck },
-          { id: 'support', label: t.support, icon: Headphones, badge: (state?.supportTickets || []).filter((tk) => tk.status === 'open').length },
-          { id: 'reviews', label: t.reviews, icon: Star },
+          { id: 'fulfillment', label: language === 'ar' ? 'الشحن والتوصيل والمحافظات' : 'Fulfillment & Shipping', icon: Truck, permission: 'settings.manage' as StaffPermission },
+          { id: 'suppliers', label: t.suppliers, icon: Building, permission: 'suppliers.manage' as StaffPermission },
+          { id: 'support', label: t.support, icon: Headphones, permission: 'support.manage' as StaffPermission, badge: (state?.supportTickets || []).filter((tk) => tk.status === 'open').length },
+          { id: 'reviews', label: t.reviews, icon: Star, permission: 'content.manage' as StaffPermission },
           ...(isOwner
             ? [
-                { id: 'users', label: t.tabUsers, icon: Users },
-                { id: 'settings', label: t.tabSettings, icon: Settings },
-                { id: 'backup', label: t.tabBackup, icon: Database },
+                { id: 'users', label: t.tabUsers, icon: Users, permission: 'staff.manage' as StaffPermission },
+                { id: 'settings', label: t.tabSettings, icon: Settings, permission: 'settings.manage' as StaffPermission },
+                { id: 'backup', label: t.tabBackup, icon: Database, permission: 'settings.manage' as StaffPermission },
               ]
             : []),
-        ].map((tab) => {
+        ].filter((tab) => !tab.permission || can(tab.permission)).map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -1276,6 +1323,12 @@ export const AdminDashboardView: React.FC = () => {
                       <td className="p-3 text-end">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => updateSettings({ featuredPromoCode: state.settings.featuredPromoCode === promo.code ? null : promo.code })}
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${state.settings.featuredPromoCode === promo.code ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300'}`}
+                          >
+                            {state.settings.featuredPromoCode === promo.code ? (language === 'ar' ? 'ظاهر بالأعلى' : 'Shown on top') : (language === 'ar' ? 'إظهار بالأعلى' : 'Show on top')}
+                          </button>
+                          <button
                             onClick={() => togglePromoCode(promo.code)}
                             className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${
                               promo.active ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'
@@ -1705,22 +1758,6 @@ export const AdminDashboardView: React.FC = () => {
                   key: 'facebook',
                   placeholder: 'https://facebook.com/qwaderstore',
                   color: 'blue',
-                  icon: Globe,
-                },
-                {
-                  id: 'tiktok',
-                  name: 'تيك توك (TikTok)',
-                  key: 'tiktok',
-                  placeholder: 'https://tiktok.com/@qwaderstore',
-                  color: 'purple',
-                  icon: Globe,
-                },
-                {
-                  id: 'youtube',
-                  name: 'يوتيوب (YouTube)',
-                  key: 'youtube',
-                  placeholder: 'https://youtube.com/@qwaderstore',
-                  color: 'rose',
                   icon: Globe,
                 },
                 {
@@ -2384,6 +2421,55 @@ export const AdminDashboardView: React.FC = () => {
           </div>
         </div>
       )}
+      {activeTab === 'suppliers' && can('suppliers.manage') && (
+        <div className="space-y-5">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-black text-slate-100">{t.suppliers}</h3>
+              <p className="text-xs text-slate-400">{language === 'ar' ? 'إدارة الموردين المرتبطين بمنتجات المتجر.' : 'Manage suppliers linked to store products.'}</p>
+            </div>
+            <button type="button" onClick={() => { setEditingSupplier(null); setSupplierForm({ name: '', phone: '', email: '', supplierType: 'general', status: 'active', notes: '' }); setSupplierFormOpen(true); }} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold">
+              <Plus className="w-4 h-4" /> {t.addSupplier}
+            </button>
+          </div>
+
+          {supplierFormOpen && (
+            <form onSubmit={saveSupplier} className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl glass-card border border-white/10">
+              <input required value={supplierForm.name} onChange={(event) => setSupplierForm((prev) => ({ ...prev, name: event.target.value }))} placeholder={t.supplierName} className="admin-input" />
+              <input value={supplierForm.phone} onChange={(event) => setSupplierForm((prev) => ({ ...prev, phone: event.target.value }))} placeholder={t.phone} className="admin-input" dir="ltr" />
+              <input type="email" value={supplierForm.email} onChange={(event) => setSupplierForm((prev) => ({ ...prev, email: event.target.value }))} placeholder={t.email} className="admin-input" dir="ltr" />
+              <input value={supplierForm.supplierType} onChange={(event) => setSupplierForm((prev) => ({ ...prev, supplierType: event.target.value }))} placeholder={t.supplierType} className="admin-input" />
+              <select value={supplierForm.status} onChange={(event) => setSupplierForm((prev) => ({ ...prev, status: event.target.value as 'active' | 'inactive' }))} className="admin-input">
+                <option value="active">{t.active}</option><option value="inactive">{t.inactive}</option>
+              </select>
+              <input value={supplierForm.notes} onChange={(event) => setSupplierForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder={t.supplierNotes} className="admin-input" />
+              <div className="sm:col-span-2 flex flex-wrap gap-2 justify-end">
+                <button type="button" onClick={() => setSupplierFormOpen(false)} className="px-4 py-2 rounded-xl border border-white/10 text-slate-300 text-xs">{t.cancel}</button>
+                <button type="submit" className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">{t.saveChanges}</button>
+              </div>
+            </form>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input value={supplierSearch} onChange={(event) => setSupplierSearch(event.target.value)} placeholder={t.searchPlaceholder} className="admin-input flex-1" />
+            <select value={supplierStatusFilter} onChange={(event) => setSupplierStatusFilter(event.target.value as 'all' | 'active' | 'inactive')} className="admin-input sm:max-w-48">
+              <option value="all">{language === 'ar' ? 'كل الحالات' : 'All statuses'}</option><option value="active">{t.active}</option><option value="inactive">{t.inactive}</option>
+            </select>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl glass-card border border-white/10">
+            <table className="w-full min-w-[680px] text-xs text-start">
+              <thead><tr className="border-b border-white/10 text-slate-400"><th className="p-3 text-start">{t.supplierName}</th><th className="p-3 text-start">{t.phone}</th><th className="p-3 text-start">{t.email}</th><th className="p-3 text-start">{t.supplierType}</th><th className="p-3 text-start">{t.supplierStatus}</th><th className="p-3 text-end">{t.saveChanges}</th></tr></thead>
+              <tbody className="divide-y divide-white/5">
+                {suppliers.filter((supplier) => (!supplierSearch.trim() || `${supplier.name} ${supplier.email || ''} ${supplier.phone || ''}`.toLowerCase().includes(supplierSearch.toLowerCase())) && (supplierStatusFilter === 'all' || supplier.status === supplierStatusFilter)).map((supplier) => (
+                  <tr key={supplier.id} className="hover:bg-slate-900/30"><td className="p-3 font-bold text-slate-200">{supplier.name}</td><td className="p-3 text-slate-300" dir="ltr">{supplier.phone || '-'}</td><td className="p-3 text-slate-300" dir="ltr">{supplier.email || '-'}</td><td className="p-3 text-slate-300">{supplier.supplierType}</td><td className="p-3"><span className={supplier.status === 'active' ? 'text-emerald-400' : 'text-slate-500'}>{supplier.status === 'active' ? t.active : t.inactive}</span></td><td className="p-3"><div className="flex justify-end gap-1"><button type="button" onClick={() => { setEditingSupplier(supplier); setSupplierForm({ name: supplier.name, phone: supplier.phone || '', email: supplier.email || '', supplierType: supplier.supplierType, status: supplier.status, notes: supplier.notes || '' }); setSupplierFormOpen(true); }} className="p-2 text-cyan-300 hover:bg-cyan-950/40 rounded-lg" title={t.editSupplier}><Edit className="w-4 h-4" /></button><button type="button" onClick={async () => { await api.deleteSupplier(supplier.id); await loadSuppliers(); }} className="p-2 text-rose-300 hover:bg-rose-950/40 rounded-lg" title={t.inactive}><Trash2 className="w-4 h-4" /></button></div></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'users' && isOwner && (
         <div className="space-y-6">
           <div className="overflow-x-auto rounded-3xl glass-card border border-white/10 p-2">
@@ -2411,6 +2497,18 @@ export const AdminDashboardView: React.FC = () => {
                           <h5 className="font-bold text-slate-200">{u.name}</h5>
                           <span className="text-[10px] text-slate-400">{u.email}</span>
                         </div>
+                        {u.phone && (
+                          <a
+                            href={`https://wa.me/${u.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
+                            title={language === 'ar' ? 'فتح واتساب للعميل' : 'Open customer WhatsApp'}
+                            aria-label={language === 'ar' ? `فتح واتساب ${u.name}` : `Open WhatsApp for ${u.name}`}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </a>
+                        )}
                       </div>
                     </td>
 
@@ -2472,7 +2570,16 @@ export const AdminDashboardView: React.FC = () => {
                         >
                           Customer
                         </button>
+                        {u.role === 'staff' && (
+                          <button type="button" onClick={() => { setEditingPermissionsUserId(editingPermissionsUserId === u.id ? null : u.id); setDraftPermissions((u.permissions || []) as StaffPermission[]); }} className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-900/60 text-purple-200 hover:bg-purple-700">{t.permissions}</button>
+                        )}
                       </div>
+                      {editingPermissionsUserId === u.id && (
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-slate-950/50 border border-white/10 text-start">
+                          {permissionOptions.map((permission) => <label key={permission.id} className="flex items-center gap-2 text-[10px] text-slate-300"><input type="checkbox" checked={draftPermissions.includes(permission.id)} onChange={(event) => setDraftPermissions((prev) => event.target.checked ? [...new Set([...prev, permission.id])] : prev.filter((item) => item !== permission.id))} />{language === 'ar' ? permission.ar : permission.en}</label>)}
+                          <button type="button" onClick={() => { void updateUserRole(u.id, 'staff', draftPermissions); setEditingPermissionsUserId(null); }} className="sm:col-span-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">{t.saveChanges}</button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -2578,7 +2685,18 @@ export const AdminDashboardView: React.FC = () => {
                   >
                     {activeSupportTicket.status === 'open' ? 'إغلاق التذكرة' : 'إعادة فتح التذكرة'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleAiReply}
+                    disabled={isAiReplying}
+                    className="ms-2 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[10px] font-bold bg-cyan-600/90 hover:bg-cyan-500 disabled:opacity-50 text-white"
+                    title={language === 'ar' ? 'إنشاء رد باستخدام مزود AI الآمن' : 'Generate a reply with the configured AI provider'}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {isAiReplying ? (language === 'ar' ? 'جارٍ الإنشاء...' : 'Generating...') : (language === 'ar' ? 'رد AI' : 'AI reply')}
+                  </button>
                 </div>
+                {aiReplyError && <div className="mx-4 mt-3 p-2.5 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-[10px]">{aiReplyError}</div>}
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-950/30">
                   {(activeSupportTicket.messages || []).map((m) => (
@@ -2650,6 +2768,22 @@ export const AdminDashboardView: React.FC = () => {
               </button>
             </div>
 
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-violet-500/30 flex items-center justify-between">
+              <div>
+                <h5 className="text-xs font-bold text-slate-100 font-cairo">{language === 'ar' ? 'إظهار شريط الكوبونات/العروض أعلى الموقع' : 'Show promo banner at the top of the site'}</h5>
+                <p className="text-[11px] text-slate-400">
+                  {language === 'ar' ? 'عرض كود الخصم الرئيسي في الشريط العلوي للموقع.' : 'Display the main promo code banner in the header area.'}
+                </p>
+              </div>
+              <button
+                id="toggle-promo-banner-btn"
+                onClick={() => updateSettings({ showPromoBanner: !state.settings.showPromoBanner })}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${state.settings.showPromoBanner ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/40' : 'bg-slate-800 text-slate-400'}`}
+              >
+                {state.settings.showPromoBanner ? (language === 'ar' ? 'البار ظاهر' : 'Visible') : (language === 'ar' ? 'البار مخفي' : 'Hidden')}
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-slate-300 font-semibold mb-1">اسم المتجر بالعربي</label>
@@ -2668,6 +2802,24 @@ export const AdminDashboardView: React.FC = () => {
                   value={state.settings.storeNameEn}
                   onChange={(e) => updateSettings({ storeNameEn: e.target.value })}
                   className="w-full p-2.5 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs text-slate-300 font-semibold mb-1">وصف المتجر / من نحن (AR)</label>
+                <textarea
+                  value={state.settings.descriptionAr}
+                  onChange={(e) => updateSettings({ descriptionAr: e.target.value })}
+                  className="w-full min-h-24 p-2.5 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs text-slate-300 font-semibold mb-1">About / Store Description (EN)</label>
+                <textarea
+                  value={state.settings.descriptionEn}
+                  onChange={(e) => updateSettings({ descriptionEn: e.target.value })}
+                  className="w-full min-h-24 p-2.5 rounded-xl text-xs bg-slate-900 border border-slate-700 text-slate-100"
                 />
               </div>
 

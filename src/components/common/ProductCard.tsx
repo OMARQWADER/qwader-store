@@ -36,8 +36,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const isFavorite = isInWishlist(product.id);
   const isCompared = isInCompare(product.id);
   const isBestSeller = bestSellerProductIds.slice(0, 4).includes(product.id);
-  const isOutOfStock = product.stockQuantity <= 0;
-  const isLowStock = !isOutOfStock && product.stockQuantity <= product.lowStockThreshold;
+  const isOutOfStock = false;
+  const isLowStock = false;
+  const rating = Number(product.rating) || 0;
 
   const discountPercent =
     product.originalPriceJOD && product.originalPriceJOD > product.priceJOD
@@ -174,7 +175,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 text-[11px] sm:text-xs">
             <div className="flex items-center text-amber-400">
               <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current flex-shrink-0" />
-              <span className="ms-1 font-extrabold text-slate-200">{product.rating.toFixed(1)}</span>
+              <span className="ms-1 font-extrabold text-slate-200">{rating.toFixed(1)}</span>
             </div>
             <span className="text-slate-600">|</span>
             <span className="text-slate-400 text-[10px] sm:text-xs">

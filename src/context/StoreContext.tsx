@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useMemo,
+  useRef,
   ReactNode,
 } from "react";
 import {
@@ -36,6 +37,7 @@ import {
   playNotificationSound,
 } from "../utils/twoFactor";
 import { api } from "../lib/api";
+import { normalizeProduct } from "../lib/productNormalize";
 
 const STORAGE_KEY_SESSION = "qwader_store_auth_session";
 const STORAGE_KEY_CART = "qwader_store_cart_v1";
@@ -44,6 +46,45 @@ const STORAGE_KEY_COMPARE = "qwader_store_compare_v1";
 const STORAGE_KEY_LANG = "qwader_lang";
 const STORAGE_KEY_THEME = "qwader_theme_mode";
 const STORAGE_KEY_CURRENCY = "qwader_currency";
+const STORAGE_KEY_STATE = "qwader_store_state_v1";
+
+const readSavedStoreState = (): StoreState | null => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_STATE);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved) as Partial<StoreState>;
+    if (!parsed || typeof parsed !== "object") return null;
+
+    return {
+      ...INITIAL_STATE,
+      ...parsed,
+      settings: {
+        ...INITIAL_STATE.settings,
+        ...(parsed.settings || {}),
+        fulfillment: {
+          ...INITIAL_STATE.settings.fulfillment,
+          ...((parsed.settings && parsed.settings.fulfillment) || {}),
+        },
+        socialLinks: {
+          ...INITIAL_STATE.settings.socialLinks,
+          ...((parsed.settings && parsed.settings.socialLinks) || {}),
+        },
+        branding: {
+          ...INITIAL_STATE.settings.branding,
+          ...((parsed.settings && parsed.settings.branding) || {}),
+        },
+      },
+      products: Array.isArray(parsed.products) ? parsed.products : INITIAL_STATE.products,
+      orders: Array.isArray(parsed.orders) ? parsed.orders : INITIAL_STATE.orders,
+      users: Array.isArray(parsed.users) ? parsed.users : INITIAL_STATE.users,
+      reviews: Array.isArray(parsed.reviews) ? parsed.reviews : INITIAL_STATE.reviews,
+      promoCodes: Array.isArray(parsed.promoCodes) ? parsed.promoCodes : INITIAL_STATE.promoCodes,
+    };
+  } catch (error) {
+    console.error("Failed to load saved store state:", error);
+    return null;
+  }
+};
 
 export interface ToastMessage {
   id: string;
@@ -60,6 +101,7 @@ interface StoreContextType {
   simulatedEmailMessage: SimulatedEmailMessage | null;
   isAdminSessionVerified: boolean;
   cart: CartItem[];
+  cartPromptProduct: Product | null;
   wishlist: string[];
   compareList: string[];
   language: Language;
@@ -108,8 +150,8 @@ interface StoreContextType {
     error?: string;
   }>;
   logout: () => void;
-  updateUserRole: (userId: string, newRole: UserRole) => void;
-  updateUserProfile: (data: Partial<User>) => void;
+  updateUserRole: (userId: string, newRole: UserRole, permissions?: string[]) => Promise<void>;
+  updateUserProfile: (data: Partial<User>) => Promise<void>;
   completeTwoFactorLogin: (code: string) => {
     success: boolean;
     error?: string;
@@ -162,6 +204,8 @@ interface StoreContextType {
   updateCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   setIsCartOpen: (open: boolean) => void;
+  confirmOpenCart: () => void;
+  continueShopping: () => void;
   applyPromoCode: (code: string) => { success: boolean; message: string };
   removePromoCode: () => void;
   toggleWishlist: (productId: string) => void;
@@ -217,14 +261,19 @@ interface StoreContextType {
   deleteReview: (reviewId: string) => Promise<void>;
   createSupportTicket: (
     subject: string,
-    message: string,
+    messageOrCategory?: string,
+    messageOrOrderNumber?: string,
     orderNumber?: string,
-  ) => string;
-  sendSupportMessage: (ticketId: string, message: string) => void;
+  ) => Promise<
+    | string
+    | { success: boolean; ticket?: SupportTicket; error?: string }
+  >;
+  addSupportMessage: (ticketId: string, message: string) => Promise<boolean>;
+  sendSupportMessage: (ticketId: string, message: string) => Promise<boolean>;
   updateTicketStatus: (
     ticketId: string,
     status: "open" | "closed" | "resolved",
-  ) => void;
+  ) => Promise<void>;
   updateSettings: (newSettings: Partial<StoreSettings>) => void;
   exportBackupJson: () => void;
   importBackupJson: (jsonData: string) => { success: boolean; error?: string };
@@ -251,43 +300,71 @@ const StoreContext = createContext<StoreContextType | null>(null);
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [state, setState] = useState<StoreState>(INITIAL_STATE);
+  const [state, setState] = useState<StoreState>(() => readSavedStoreState() || INITIAL_STATE);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(state));
+    } catch (error) {
+      console.error("Failed to persist store state:", error);
+    }
+  }, [state]);
 
   // Load data from API on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [products, orders, users] = await Promise.all([
-          api.getProducts().catch(() => INITIAL_STATE.products),
-          api.getOrders().catch(() => INITIAL_STATE.orders),
-          api.getUsers().catch(() => INITIAL_STATE.users),
-        ]);
-
-        let reviewsData: Review[] = [];
-        try {
-          if (products && products.length > 0) {
-            const reviewPromises = products.map((p: any) =>
-              api.getReviews(p.id).catch(() => []),
-            );
-            const allReviews = await Promise.all(reviewPromises);
-            reviewsData = allReviews.flat();
-          }
-        } catch (e) {
-          console.warn("Failed to load reviews:", e);
+        const savedState = readSavedStoreState();
+        if (savedState) {
+          setState(savedState);
+          setLoading(false);
+          return;
         }
 
-        setState({
+        const [products, storeConfig, reviewsData] = await Promise.all([
+          api.getProducts().catch(() => []),
+          api.getStoreConfig().catch(() => ({})),
+          api.getReviews().catch(() => []),
+        ]);
+
+        const mergedSettings = {
+          ...INITIAL_STATE.settings,
+          ...(storeConfig && typeof storeConfig === "object" ? storeConfig.settings || storeConfig : {}),
+        };
+
+        const mergedState = {
           ...INITIAL_STATE,
-          products: Array.isArray(products) ? products : INITIAL_STATE.products,
-          orders: Array.isArray(orders) ? orders : INITIAL_STATE.orders,
-          users: Array.isArray(users) ? users : INITIAL_STATE.users,
-          reviews: Array.isArray(reviewsData)
-            ? reviewsData
-            : INITIAL_STATE.reviews,
-        });
+          settings: {
+            ...INITIAL_STATE.settings,
+            ...mergedSettings,
+            fulfillment: {
+              ...INITIAL_STATE.settings.fulfillment,
+              ...(storeConfig && typeof storeConfig === "object" ? storeConfig.settings?.fulfillment || storeConfig.fulfillment || {} : {}),
+            },
+            socialLinks: {
+              ...INITIAL_STATE.settings.socialLinks,
+              ...(storeConfig && typeof storeConfig === "object" ? storeConfig.settings?.socialLinks || storeConfig.socialLinks || {} : {}),
+            },
+            branding: {
+              ...INITIAL_STATE.settings.branding,
+              ...(storeConfig && typeof storeConfig === "object" ? storeConfig.settings?.branding || storeConfig.branding || {} : {}),
+            },
+          },
+          products: Array.isArray(products) ? products.map(normalizeProduct) : [],
+          orders: INITIAL_STATE.orders,
+          users: INITIAL_STATE.users,
+          reviews: Array.isArray(reviewsData) ? reviewsData : [],
+          promoCodes:
+            storeConfig && Array.isArray(storeConfig.promoCodes)
+              ? storeConfig.promoCodes
+              : INITIAL_STATE.promoCodes,
+        };
+
+        setState(mergedState);
       } catch (error) {
         console.error("Failed to load data from API:", error);
+        setState((prev) => prev && prev !== INITIAL_STATE ? prev : { ...INITIAL_STATE, products: [], orders: [], users: [], reviews: [] });
       } finally {
         setLoading(false);
       }
@@ -308,6 +385,70 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     }
     return null;
   });
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      return;
+    }
+
+    api.syncUser(currentUser).then(async (response) => {
+      const canonicalUser = response?.user || currentUser;
+      if (
+        canonicalUser.role !== currentUser.role ||
+        JSON.stringify(canonicalUser.permissions || []) !== JSON.stringify(currentUser.permissions || [])
+      ) {
+        setCurrentUser(canonicalUser);
+      }
+      const hasAdminSession =
+        currentUser.role === "owner" ||
+        currentUser.role === "staff" ||
+        canonicalUser.role === "owner" ||
+        canonicalUser.role === "staff";
+      if (hasAdminSession) {
+        const results = await Promise.allSettled([
+          api.getUsers(),
+          api.getOrders(),
+          api.getSupportTickets(),
+        ]);
+        const users = results[0].status === "fulfilled" ? results[0].value : null;
+        const orders = results[1].status === "fulfilled" ? results[1].value : null;
+        const supportTickets = results[2].status === "fulfilled" ? results[2].value : null;
+        setState((prev) => ({
+          ...prev,
+          ...(users ? { users } : {}),
+          ...(orders ? { orders } : {}),
+          ...(supportTickets ? {
+            supportTickets,
+            supportMessages: supportTickets.flatMap((ticket: SupportTicket) => (ticket.messages || []).map((message) => ({ id: message.id, ticketId: ticket.id, senderId: message.senderId, senderName: message.senderName, senderRole: message.senderRole, message: message.text, timestamp: message.createdAt, isRead: true }))),
+          } : {}),
+        }));
+        results.forEach((result, index) => {
+          if (result.status === "rejected") console.error(`Failed to load admin resource ${index}:`, result.reason);
+        });
+        return;
+      }
+
+      const [userOrdersResult, supportTicketsResult] = await Promise.allSettled([
+        api.getOrdersByUser(currentUser.id),
+        api.getSupportTickets(),
+      ]);
+      const userOrders = userOrdersResult.status === "fulfilled" ? userOrdersResult.value : null;
+      const supportTickets = supportTicketsResult.status === "fulfilled" ? supportTicketsResult.value : null;
+      setState((prev) => {
+        const otherOrders = prev.orders.filter((order) => order.userId !== currentUser.id);
+        return {
+          ...prev,
+          ...(userOrders ? { orders: [...userOrders, ...otherOrders] } : {}),
+          ...(supportTickets ? {
+            supportTickets,
+            supportMessages: supportTickets.flatMap((ticket: SupportTicket) => (ticket.messages || []).map((message) => ({ id: message.id, ticketId: ticket.id, senderId: message.senderId, senderName: message.senderName, senderRole: message.senderRole, message: message.text, timestamp: message.createdAt, isRead: true }))),
+          } : {}),
+        };
+      });
+    }).catch((error) => {
+      console.error("Failed to reload authenticated data:", error);
+    });
+  }, [currentUser]);
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -365,6 +506,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   });
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartPromptProduct, setCartPromptProduct] = useState<Product | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [appliedPromo, setAppliedPromo] = useState<{
     code: string;
@@ -388,6 +530,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     null,
   );
   const [isOrdersLoading, setIsOrdersLoading] = useState<boolean>(false);
+  const storeConfigSaveTimer = useRef<number | null>(null);
 
   const isAdminSessionVerified = useMemo(() => {
     if (
@@ -476,7 +619,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     try {
       if (currentUser) {
         localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
-        api.syncUser(currentUser).catch(console.error);
       } else {
         localStorage.removeItem(STORAGE_KEY_SESSION);
       }
@@ -488,7 +630,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   // Sync Language & RTL/LTR
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem(STORAGE_KEY_LANG, lang);
+    try {
+      localStorage.setItem(STORAGE_KEY_LANG, lang);
+    } catch (e) {
+      console.error("Failed to persist language:", e);
+    }
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   };
@@ -496,6 +642,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+    try {
+      localStorage.setItem(STORAGE_KEY_LANG, language);
+    } catch (e) {
+      console.error("Failed to sync language:", e);
+    }
   }, [language]);
 
   // Sync Theme
@@ -527,8 +678,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
 
   const setCurrency = (curr: Currency) => {
     setCurrencyState(curr);
-    localStorage.setItem(STORAGE_KEY_CURRENCY, curr);
+    try {
+      localStorage.setItem(STORAGE_KEY_CURRENCY, curr);
+    } catch (e) {
+      console.error("Failed to persist currency:", e);
+    }
   };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_CURRENCY, currency);
+    } catch (e) {
+      console.error("Failed to sync currency:", e);
+    }
+  }, [currency]);
 
   // Toast System
   const addToast = (
@@ -791,26 +954,46 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     };
   };
 
-  const updateUserProfile = (data: Partial<User>) => {
+  const updateUserProfile = async (data: Partial<User>) => {
     if (!currentUser) return;
     const updatedUser: User = {
       ...currentUser,
       ...data,
     };
 
-    setState((prev) => ({
-      ...prev,
-      users: prev.users.map((u) => (u.id === currentUser.id ? updatedUser : u)),
-    }));
+    try {
+      const response = await api.updateUser(currentUser.id, {
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+        promotional_emails: updatedUser.promotionalEmails,
+      });
+      const savedUser: User = {
+        ...updatedUser,
+        ...(response || {}),
+      };
+      setState((prev) => ({
+        ...prev,
+        users: prev.users.map((u) => (u.id === currentUser.id ? savedUser : u)),
+      }));
 
-    setCurrentUser(updatedUser);
-    addToast(
-      language === "ar" ? "تم تحديث الملف الشخصي" : "Profile Updated",
-      language === "ar"
-        ? "تم حفظ التغييرات بنجاح"
-        : "Your changes have been saved",
-      "success",
-    );
+      setCurrentUser(savedUser);
+      addToast(
+        language === "ar" ? "تم تحديث الملف الشخصي" : "Profile Updated",
+        language === "ar"
+          ? "تم حفظ التغييرات بنجاح"
+          : "Your changes have been saved",
+        "success",
+      );
+    } catch (error) {
+      console.error("Failed to persist user profile:", error);
+      addToast(
+        language === "ar" ? "تعذر حفظ الملف الشخصي" : "Profile update failed",
+        language === "ar"
+          ? "لم يتم حفظ التغييرات في قاعدة البيانات"
+          : "The changes were not saved to the database",
+        "error",
+      );
+    }
   };
 
   const logout = () => {
@@ -824,23 +1007,36 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     );
   };
 
-  const updateUserRole = (userId: string, newRole: UserRole) => {
-    setState((prev) => ({
-      ...prev,
-      users: prev.users.map((u) =>
-        u.id === userId ? { ...u, role: newRole } : u,
-      ),
-    }));
-    if (currentUser?.id === userId) {
-      setCurrentUser((prev) => (prev ? { ...prev, role: newRole } : null));
+  const updateUserRole = async (userId: string, newRole: UserRole, permissions: string[] = []) => {
+    try {
+      const response = await api.updateUserRole(userId, newRole, permissions);
+      const savedRole = response?.role || newRole;
+      setState((prev) => ({
+        ...prev,
+        users: prev.users.map((u) =>
+          u.id === userId ? { ...u, role: savedRole, permissions: response?.permissions || permissions } : u,
+        ),
+      }));
+      if (currentUser?.id === userId) {
+        setCurrentUser((prev) => (prev ? { ...prev, role: savedRole, permissions: response?.permissions || permissions } : null));
+      }
+      addToast(
+        language === "ar" ? "تحديث الصلاحية" : "Role Updated",
+        language === "ar"
+          ? `تم تغيير صلاحية المستخدم بنجاح`
+          : `User role changed to ${savedRole}`,
+        "success",
+      );
+    } catch (error) {
+      console.error("Failed to persist user role:", error);
+      addToast(
+        language === "ar" ? "تعذر تحديث الصلاحية" : "Role update failed",
+        language === "ar"
+          ? "لم يتم حفظ التغيير في قاعدة البيانات"
+          : "The change was not saved to the database",
+        "error",
+      );
     }
-    addToast(
-      language === "ar" ? "تحديث الصلاحية" : "Role Updated",
-      language === "ar"
-        ? `تم تغيير صلاحية المستخدم بنجاح`
-        : `User role changed to ${newRole}`,
-      "success",
-    );
   };
 
   // 2FA Methods
@@ -958,7 +1154,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    console.log("OTP Code:", otpCode);
 
     addToast(
       language === "ar" ? "تم إرسال رمز أمان جديد 🔄" : "New code sent 🔄",
@@ -1167,7 +1362,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     };
     setSimulatedEmailMessage(emailMsg);
 
-    console.log("OTP Code:", code);
 
     playNotificationSound();
 
@@ -1292,7 +1486,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     setSimulatedEmailMessage(emailMsg);
     playNotificationSound();
 
-    console.log("OTP Code:", newCode);
 
     addToast(
       language === "ar" ? "تم إرسال رمز جديد 🔄" : "New Code Sent 🔄",
@@ -1319,6 +1512,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   // Promo Codes
+  const persistStoreConfig = (settings: StoreSettings, promoCodes: StoreState["promoCodes"]) => {
+    if (storeConfigSaveTimer.current !== null) {
+      window.clearTimeout(storeConfigSaveTimer.current);
+    }
+    storeConfigSaveTimer.current = window.setTimeout(() => {
+      api.saveStoreConfig({ settings, promoCodes }).catch((error) => {
+        console.error("Failed to persist store configuration:", error);
+      });
+    }, 350);
+  };
+
   const addPromoCode = (promo: {
     code: string;
     discountPercent?: number;
@@ -1326,9 +1530,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   }) => {
     const cleanCode = promo.code.trim().toUpperCase();
     if (!cleanCode) return;
-    setState((prev) => ({
-      ...prev,
-      promoCodes: [
+    setState((prev) => {
+      const promoCodes = [
         ...prev.promoCodes.filter((p) => p.code.toUpperCase() !== cleanCode),
         {
           code: cleanCode,
@@ -1336,8 +1539,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
           discountFixedJOD: promo.discountFixedJOD,
           active: true,
         },
-      ],
-    }));
+      ];
+      persistStoreConfig(prev.settings, promoCodes);
+      return { ...prev, promoCodes };
+    });
     addToast(
       language === "ar" ? "تمت إضافة كود الخصم 🏷️" : "Promo Code Added 🏷️",
       language === "ar"
@@ -1348,23 +1553,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const togglePromoCode = (code: string) => {
-    setState((prev) => ({
-      ...prev,
-      promoCodes: prev.promoCodes.map((p) =>
+    setState((prev) => {
+      const promoCodes = prev.promoCodes.map((p) =>
         p.code.toUpperCase() === code.toUpperCase()
           ? { ...p, active: !p.active }
           : p,
-      ),
-    }));
+      );
+      persistStoreConfig(prev.settings, promoCodes);
+      return { ...prev, promoCodes };
+    });
   };
 
   const deletePromoCode = (code: string) => {
-    setState((prev) => ({
-      ...prev,
-      promoCodes: prev.promoCodes.filter(
+    setState((prev) => {
+      const promoCodes = prev.promoCodes.filter(
         (p) => p.code.toUpperCase() !== code.toUpperCase(),
-      ),
-    }));
+      );
+      persistStoreConfig(prev.settings, promoCodes);
+      return { ...prev, promoCodes };
+    });
     if (appliedPromo?.code.toUpperCase() === code.toUpperCase()) {
       setAppliedPromo(null);
     }
@@ -1379,31 +1586,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
 
   // Cart Management
   const addToCart = (product: Product, quantity = 1) => {
-    if (product.stockQuantity <= 0) {
-      addToast(
-        language === "ar" ? "عذراً، نفد المخزون" : "Out of stock",
-        language === "ar"
-          ? `المنتج "${product.nameAr}" غير متوفر حالياً`
-          : `Product is currently out of stock`,
-        "warning",
-      );
-      return;
-    }
-
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
-        const newQty = Math.min(
-          existing.quantity + quantity,
-          product.stockQuantity,
-        );
+        const newQty = existing.quantity + quantity;
         return prev.map((item) =>
           item.product.id === product.id ? { ...item, quantity: newQty } : item,
         );
       }
       return [
         ...prev,
-        { product, quantity: Math.min(quantity, product.stockQuantity) },
+        { product, quantity },
       ];
     });
 
@@ -1414,7 +1607,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         : `Added ${product.nameEn} to your cart`,
       "success",
     );
+    setCartPromptProduct(product);
+  };
+
+  const confirmOpenCart = () => {
+    setCartPromptProduct(null);
     setIsCartOpen(true);
+  };
+
+  const continueShopping = () => {
+    setCartPromptProduct(null);
   };
 
   const removeFromCart = (productId: string) => {
@@ -1429,8 +1631,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     setCart((prev) =>
       prev.map((item) => {
         if (item.product.id === productId) {
-          const maxStock = item.product.stockQuantity;
-          return { ...item, quantity: Math.min(quantity, maxStock) };
+          return { ...item, quantity };
         }
         return item;
       }),
@@ -1563,6 +1764,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
     paymentReference?: string;
     notes?: string;
   }): Promise<Order> => {
+    if (data.fulfillmentType === "delivery" && data.deliveryContactChannel && data.paymentMethod === "cash_pickup") {
+      throw new Error(
+        language === "ar"
+          ? "الدفع عند الاستلام غير متاح للطلبات الرقمية أو عن بُعد."
+          : "Cash on delivery is unavailable for digital or remote orders.",
+      );
+    }
+
     const subtotalJOD = cart.reduce(
       (acc, item) => acc + item.product.priceJOD * item.quantity,
       0,
@@ -1636,9 +1845,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
 
       setState((prev) => {
         const currentOrders = Array.isArray(prev.orders) ? prev.orders : [];
+        const staffNotifications = prev.users
+          .filter((user) => user.role === "owner" || user.role === "staff")
+          .map((user) => ({
+            id: `notif-admin-order-${newOrder.id}-${user.id}`,
+            userId: user.id,
+            titleAr: `طلب جديد #${orderNumber}`,
+            titleEn: `New order #${orderNumber}`,
+            messageAr: `تم استلام طلب جديد بقيمة ${totalJOD.toFixed(2)} د.أ`,
+            messageEn: `A new order worth ${totalJOD.toFixed(2)} JOD was received`,
+            type: "order" as const,
+            linkHash: "#admin",
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          }));
         return {
           ...prev,
           orders: [newOrder, ...currentOrders],
+          notifications: [...staffNotifications, ...prev.notifications],
         };
       });
 
@@ -1798,7 +2022,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
           productData.priceJOD * state.settings.usdExchangeRate,
         category: productData.category,
         image: productData.image || "",
+        original_price_jod: productData.originalPriceJOD,
+        original_price_usd: productData.originalPriceUSD,
         stock_quantity: productData.stockQuantity || 0,
+        low_stock_threshold: productData.lowStockThreshold,
+        is_featured: productData.isFeatured,
+        badge_ar: productData.badgeAr,
+        badge_en: productData.badgeEn,
+        platform: productData.platform,
+        region_ar: productData.regionAr,
+        region_en: productData.regionEn,
+        delivery_type_ar: productData.deliveryTypeAr,
+        delivery_type_en: productData.deliveryTypeEn,
+        short_desc_ar: productData.shortDescAr,
+        short_desc_en: productData.shortDescEn,
+        features_ar: productData.featuresAr,
+        features_en: productData.featuresEn,
       });
 
       setState((prev) => ({
@@ -1810,7 +2049,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         language === "ar"
           ? "تم إضافة المنتج بنجاح"
           : "Product added successfully",
-        newProduct.name_ar,
+        newProduct.nameAr,
         "success",
       );
     } catch (err: any) {
@@ -1833,7 +2072,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         price_usd: product.priceUSD,
         category: product.category,
         image: product.image || "",
+        original_price_jod: product.originalPriceJOD,
+        original_price_usd: product.originalPriceUSD,
         stock_quantity: product.stockQuantity || 0,
+        low_stock_threshold: product.lowStockThreshold,
+        is_featured: product.isFeatured,
+        badge_ar: product.badgeAr,
+        badge_en: product.badgeEn,
+        platform: product.platform,
+        region_ar: product.regionAr,
+        region_en: product.regionEn,
+        delivery_type_ar: product.deliveryTypeAr,
+        delivery_type_en: product.deliveryTypeEn,
+        short_desc_ar: product.shortDescAr,
+        short_desc_en: product.shortDescEn,
+        features_ar: product.featuresAr,
+        features_en: product.featuresEn,
       });
 
       setState((prev) => ({
@@ -2015,11 +2269,112 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   // Support System
-  const createSupportTicket = (
+  const refreshSupportTickets = async () => {
+    const supportTickets = await api.getSupportTickets();
+    const supportMessages = supportTickets.flatMap((ticket: SupportTicket) =>
+      (ticket.messages || []).map((message) => ({
+        id: message.id,
+        ticketId: ticket.id,
+        senderId: message.senderId,
+        senderName: message.senderName,
+        senderRole: message.senderRole,
+        message: message.text,
+        timestamp: message.createdAt,
+        isRead: true,
+      })),
+    );
+    setState((prev) => ({ ...prev, supportTickets, supportMessages }));
+    return supportTickets;
+  };
+
+  const createSupportTicket = async (
     subject: string,
-    message: string,
+    messageOrCategory?: string,
+    messageOrOrderNumber?: string,
     orderNumber?: string,
-  ): string => {
+  ): Promise<string | { success: boolean; ticket?: SupportTicket; error?: string }> => {
+    const categoryOptions: Array<SupportTicket["category"]> = [
+      "order_inquiry",
+      "technical_help",
+      "activation_help",
+      "general",
+    ];
+    const category =
+      messageOrCategory && categoryOptions.includes(messageOrCategory as any)
+        ? (messageOrCategory as SupportTicket["category"])
+        : "general";
+    const hasCategoryInput =
+      !!messageOrCategory && categoryOptions.includes(messageOrCategory as any);
+
+    const resolvedMessage = hasCategoryInput
+      ? (messageOrOrderNumber || "")
+      : (messageOrCategory || "");
+    const resolvedOrderNumber = hasCategoryInput
+      ? orderNumber
+      : (typeof messageOrOrderNumber === "string" ? messageOrOrderNumber : undefined);
+
+    if (!subject.trim() || !resolvedMessage.trim()) {
+      return {
+        success: false,
+        error:
+          language === "ar"
+            ? "يرجى ملء عنوان التذكرة ورسالتها"
+            : "Subject and message are required",
+      };
+    }
+
+    if (!currentUser) {
+      return {
+        success: false,
+        error: language === "ar" ? "يرجى تسجيل الدخول لفتح تذكرة محفوظة" : "Please sign in to create a persisted ticket",
+      };
+    }
+
+    try {
+      await api.syncUser(currentUser);
+      await api.createSupportTicket({
+        subject,
+        message: resolvedMessage,
+        category,
+        orderNumber: resolvedOrderNumber,
+      });
+      setState((prev) => ({
+        ...prev,
+        notifications: [
+          ...prev.users
+            .filter((user) => user.role === "owner" || user.role === "staff")
+            .map((user) => ({
+              id: `notif-admin-support-${Date.now()}-${user.id}`,
+              userId: user.id,
+              titleAr: "استفسار دعم جديد",
+              titleEn: "New support request",
+              messageAr: subject,
+              messageEn: subject,
+              type: "support" as const,
+              linkHash: "#admin",
+              isRead: false,
+              createdAt: new Date().toISOString(),
+            })),
+          ...prev.notifications,
+        ],
+      }));
+      const supportTickets = await refreshSupportTickets();
+      const ticket = supportTickets[0];
+      addToast(
+        language === "ar" ? "تم إرسال تذكرتك للدعم الفني 💬" : "Support ticket submitted 💬",
+        language === "ar" ? "تم حفظ التذكرة في قاعدة البيانات" : "The ticket was saved to the database",
+        "success",
+      );
+      return { success: true, ticket };
+    } catch (error) {
+      console.error("Failed to persist support ticket:", error);
+      return {
+        success: false,
+        error: language === "ar" ? "تعذر حفظ التذكرة في قاعدة البيانات" : "The ticket could not be saved",
+      };
+    }
+
+    /* Local-only ticket construction is retained below as a compatibility fallback for legacy callers. */
     const ticketId = `tkt-${Date.now()}`;
     const user = currentUser || {
       id: `guest-${Date.now()}`,
@@ -2030,19 +2385,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
       registeredAt: new Date().toISOString(),
     };
 
-    const newTicket: SupportTicket = {
-      id: ticketId,
-      userId: user.id,
-      userName: user.name,
-      userEmail: user.email,
-      userPhone: user.phone,
-      subject,
-      orderNumber,
-      status: "open",
-      createdAt: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-    };
-
+    const createdAt = new Date().toISOString();
     const firstMsg: SupportMessage = {
       id: `msg-${Date.now()}`,
       ticketId,
@@ -2050,9 +2393,34 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
       senderName: user.name,
       senderRole: user.role,
       recipientId: "admin",
-      message,
-      timestamp: new Date().toISOString(),
+      message: resolvedMessage,
+      timestamp: createdAt,
       isRead: false,
+    };
+
+    const newTicket: SupportTicket = {
+      id: ticketId,
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      userPhone: user.phone,
+      subject,
+      orderNumber: resolvedOrderNumber,
+      category,
+      status: "open",
+      createdAt,
+      lastActivity: createdAt,
+      updatedAt: createdAt,
+      messages: [
+        {
+          id: firstMsg.id,
+          senderId: firstMsg.senderId,
+          senderName: firstMsg.senderName,
+          senderRole: firstMsg.senderRole,
+          text: firstMsg.message,
+          createdAt: firstMsg.timestamp,
+        },
+      ],
     };
 
     setState((prev) => ({
@@ -2071,11 +2439,46 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
       "success",
     );
 
-    return ticketId;
+    return { success: true, ticket: newTicket };
   };
 
-  const sendSupportMessage = (ticketId: string, message: string) => {
-    if (!message.trim()) return;
+  const addSupportMessage = async (ticketId: string, message: string) => {
+    if (!ticketId || !message.trim()) return false;
+
+    if (currentUser) {
+      try {
+        const ticketOwnerId = state.supportTickets.find((ticket) => ticket.id === ticketId)?.userId;
+        await api.syncUser(currentUser);
+        await api.addSupportMessage(ticketId, message.trim());
+        if (ticketOwnerId && ticketOwnerId !== currentUser.id) {
+          setState((prev) => ({
+            ...prev,
+            notifications: [{
+              id: `notif-support-reply-${Date.now()}`,
+              userId: ticketOwnerId,
+              titleAr: "تم الرد على طلب الدعم",
+              titleEn: "Support request answered",
+              messageAr: "تمت إضافة رد جديد إلى محادثة الدعم الخاصة بك.",
+              messageEn: "A new reply was added to your support conversation.",
+              type: "support",
+              linkHash: "#support",
+              isRead: false,
+              createdAt: new Date().toISOString(),
+            }, ...prev.notifications],
+          }));
+        }
+        await refreshSupportTickets();
+        return true;
+      } catch (error) {
+        console.error("Failed to persist support message:", error);
+        addToast(
+          language === "ar" ? "تعذر حفظ الرسالة" : "Message could not be saved",
+          language === "ar" ? "تحقق من تسجيل الدخول وحاول مرة أخرى" : "Please verify your session and try again",
+          "error",
+        );
+        return false;
+      }
+    }
 
     const sender = currentUser || {
       id: "guest-user",
@@ -2099,16 +2502,58 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
       supportMessages: [...prev.supportMessages, newMsg],
       supportTickets: prev.supportTickets.map((t) =>
         t.id === ticketId
-          ? { ...t, lastActivity: new Date().toISOString() }
+          ? {
+              ...t,
+              lastActivity: newMsg.timestamp,
+              updatedAt: newMsg.timestamp,
+              messages: [
+                ...(t.messages || []),
+                {
+                  id: newMsg.id,
+                  senderId: newMsg.senderId,
+                  senderName: newMsg.senderName,
+                  senderRole: newMsg.senderRole,
+                  text: newMsg.message,
+                  createdAt: newMsg.timestamp,
+                },
+              ],
+            }
           : t,
       ),
     }));
+
+    return true;
   };
 
-  const updateTicketStatus = (
+  const sendSupportMessage = async (ticketId: string, message: string) => {
+    return addSupportMessage(ticketId, message);
+  };
+
+  const updateTicketStatus = async (
     ticketId: string,
     status: "open" | "closed" | "resolved",
   ) => {
+    if (currentUser && (currentUser.role === "owner" || currentUser.role === "staff")) {
+      try {
+        await api.updateSupportTicketStatus(ticketId, status);
+        await refreshSupportTickets();
+        addToast(
+          language === "ar" ? "تم تحديث حالة التذكرة" : "Ticket status updated",
+          "",
+          "info",
+        );
+        return;
+      } catch (error) {
+        console.error("Failed to persist ticket status:", error);
+        addToast(
+          language === "ar" ? "تعذر حفظ حالة التذكرة" : "Ticket status could not be saved",
+          "",
+          "error",
+        );
+        return;
+      }
+    }
+
     setState((prev) => ({
       ...prev,
       supportTickets: prev.supportTickets.map((t) =>
@@ -2126,10 +2571,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
 
   // Settings
   const updateSettings = (newSettings: Partial<StoreSettings>) => {
-    setState((prev) => ({
-      ...prev,
-      settings: { ...prev.settings, ...newSettings },
-    }));
+    const nextSettings = { ...state.settings, ...newSettings };
+    setState((prev) => ({ ...prev, settings: { ...prev.settings, ...newSettings } }));
+    persistStoreConfig(nextSettings, state.promoCodes);
     addToast(
       language === "ar" ? "تم حفظ إعدادات المتجر" : "Settings saved",
       "",
@@ -2253,6 +2697,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         simulatedEmailMessage,
         isAdminSessionVerified,
         cart,
+        cartPromptProduct,
         wishlist,
         compareList,
         language,
@@ -2296,6 +2741,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         updateCartQuantity,
         clearCart,
         setIsCartOpen,
+        confirmOpenCart,
+        continueShopping,
         applyPromoCode,
         removePromoCode,
         toggleWishlist,
@@ -2314,6 +2761,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
         addReview,
         deleteReview,
         createSupportTicket,
+        addSupportMessage,
         sendSupportMessage,
         updateTicketStatus,
         updateSettings,

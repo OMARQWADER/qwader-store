@@ -1,7 +1,19 @@
 export type ProductCategory =
   "games" | "subscriptions" | "psn_cards" | "steam_cards";
 
-export type UserRole = "owner" | "staff" | "customer";
+export type UserRole = "owner" | "staff" | "customer" | "admin" | "employee";
+
+export type StaffPermission =
+  | "products.manage"
+  | "orders.manage"
+  | "customers.manage"
+  | "support.manage"
+  | "suppliers.manage"
+  | "promotions.manage"
+  | "settings.manage"
+  | "reports.view"
+  | "staff.manage"
+  | "content.manage";
 
 export type OrderStatus =
   | "pending"
@@ -163,7 +175,7 @@ export interface Order {
   customerEmail: string;
   digitalKeys?: string[];
   preferredDeliveryMethod: "whatsapp" | "email" | "both";
-  fulfillmentType: "pickup" | "delivery";
+  fulfillmentType: "pickup" | "delivery" | "remote";
   deliveryContactChannel?: string;
   deliveryContactUrl?: string;
   shippingGovernorate?: string;
@@ -206,6 +218,7 @@ export interface User {
   email: string;
   phone: string;
   role: UserRole;
+  permissions?: StaffPermission[];
   authUid?: string;
   avatar?: string;
   city?: string;
@@ -219,6 +232,19 @@ export interface User {
   emailVerified?: boolean;
   promotionalEmails?: boolean;
   sensitiveActionVerifiedUntil?: number; // session timestamp for step-up verification
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  supplierType: string;
+  status: "active" | "inactive";
+  notes?: string;
+  productIds?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type SensitiveActionType =
@@ -347,12 +373,14 @@ export interface StoreSettings {
   maintenanceMode?: boolean;
   maintenanceMessageAr: string;
   maintenanceMessageEn: string;
+  showPromoBanner?: boolean;
   defaultCurrency: Currency;
   usdExchangeRate: number;
   lowStockGlobalThreshold: number;
   socialLinks: SocialLinks;
   branding: BrandingSettings;
   fulfillment: FulfillmentSettings;
+  featuredPromoCode?: string | null;
 }
 
 export interface StoreState {
