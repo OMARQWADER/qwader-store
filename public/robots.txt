@@ -4,5 +4,4 @@ Disallow: /#admin
 Disallow: /#account
 Disallow: /api/
 
-Sitemap: https://qwaderstore.jo/sitemap.xml
-Host: https://qwaderstore.jo
+Sitemap: https://qwader-store.vercel.app/sitemap.xml
