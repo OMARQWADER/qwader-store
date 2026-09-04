@@ -1634,6 +1634,34 @@ export const AdminDashboardView: React.FC = () => {
                   />
                 </div>
               </div>
+
+              <div className="border-t border-white/10 pt-4">
+                <h5 className="mb-3 text-xs font-bold text-slate-200">
+                  {language === 'ar' ? 'شرائح السلايدر الظاهرة' : 'Visible hero slides'}
+                </h5>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {[
+                    ['slide-fc25-games', language === 'ar' ? 'ألعاب PlayStation' : 'PlayStation games'],
+                    ['slide-psplus-subs', language === 'ar' ? 'اشتراكات PlayStation Plus' : 'PlayStation Plus subscriptions'],
+                    ['slide-wukong-goty', language === 'ar' ? 'عرض Black Myth: Wukong' : 'Black Myth: Wukong offer'],
+                    ['slide-cards-wallet', language === 'ar' ? 'بطاقات PSN وSteam' : 'PSN and Steam cards'],
+                    ['slide-cliq-pickup', language === 'ar' ? 'الدفع عبر CliQ والاستلام' : 'CliQ and pickup'],
+                  ].map(([id, label]) => {
+                    const enabled = state.settings.heroSlides?.[id] !== false;
+                    return (
+                      <label key={id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={enabled}
+                          onChange={() => updateSettings({ heroSlides: { ...state.settings.heroSlides, [id]: !enabled } })}
+                          className="h-4 w-4 accent-purple-500"
+                        />
+                        <span>{label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Accent Color & Banner */}

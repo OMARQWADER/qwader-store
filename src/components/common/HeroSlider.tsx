@@ -166,6 +166,13 @@ export const HeroSlider: React.FC = () => {
       highlightPillsEn: ['🇯🇴 Zero Fee CliQ Transfer', '🏬 Free Store Pickup', '🚚 Doorstep Delivery Across Jordan'],
     },
   ];
+  const visibleSlides = slides.filter((slide) => {
+    if (state.settings.heroSlides?.[slide.id] === false) return false;
+    if (slide.id === 'slide-fc25-games') return Boolean(fc25);
+    if (slide.id === 'slide-psplus-subs') return Boolean(psPlus);
+    if (slide.id === 'slide-wukong-goty') return Boolean(wukong);
+    return true;
+  });
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -179,17 +186,21 @@ export const HeroSlider: React.FC = () => {
   const sliderContainerRef = useRef<HTMLDivElement>(null);
   const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  useEffect(() => {
+    setCurrentIndex((index) => (visibleSlides.length ? index % visibleSlides.length : 0));
+  }, [visibleSlides.length]);
+
   const SLIDE_DURATION = 6000; // 6 seconds per slide
 
   const isRTL = language === 'ar';
 
   const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % slides.length);
-  }, [slides.length]);
+    setCurrentIndex((prev) => (prev + 1) % visibleSlides.length);
+  }, [visibleSlides.length]);
 
   const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
-  }, [slides.length]);
+    setCurrentIndex((prev) => (prev - 1 + visibleSlides.length) % visibleSlides.length);
+  }, [visibleSlides.length]);
 
   const goToSlide = (idx: number) => {
     setCurrentIndex(idx);
@@ -313,7 +324,9 @@ export const HeroSlider: React.FC = () => {
     setImageLoadedState((prev) => ({ ...prev, [slideId]: true }));
   };
 
-  const currentSlide = slides[currentIndex];
+  if (!visibleSlides.length) return null;
+
+  const currentSlide = visibleSlides[currentIndex % visibleSlides.length];
 
   return (
     <div
@@ -345,7 +358,7 @@ export const HeroSlider: React.FC = () => {
               : `translateX(calc(-${currentIndex * 100}% + ${dragOffset}px))`,
           }}
         >
-          {slides.map((slide, idx) => {
+          {visibleSlides.map((slide, idx) => {
             const isActive = idx === currentIndex;
             const isLoaded = imageLoadedState[slide.id];
 
@@ -512,7 +525,7 @@ export const HeroSlider: React.FC = () => {
 
           {/* Dots with Touch-Target Padding (Min 44px click area) */}
           <div className="flex items-center gap-1.5 pointer-events-auto">
-            {slides.map((slide, idx) => {
+            {visibleSlides.map((slide, idx) => {
               const isSelected = idx === currentIndex;
               return (
                 <button

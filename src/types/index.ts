@@ -381,6 +381,7 @@ export interface StoreSettings {
   branding: BrandingSettings;
   fulfillment: FulfillmentSettings;
   featuredPromoCode?: string | null;
+  heroSlides?: Record<string, boolean>;
 }
 
 export interface StoreState {

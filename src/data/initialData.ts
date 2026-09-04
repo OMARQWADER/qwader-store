@@ -83,6 +83,13 @@ export const INITIAL_STATE: StoreState = {
       ],
     },
     featuredPromoCode: null,
+    heroSlides: {
+      'slide-fc25-games': true,
+      'slide-psplus-subs': true,
+      'slide-wukong-goty': true,
+      'slide-cards-wallet': true,
+      'slide-cliq-pickup': true,
+    },
   },
   products: [
     // --- 1. PlayStation Games (ألعاب PlayStation) ---
