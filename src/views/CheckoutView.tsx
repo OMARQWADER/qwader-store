@@ -251,7 +251,7 @@ export const CheckoutView: React.FC = () => {
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0b5ed7] text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#A855F7] text-white">
               <ShoppingBag className="h-5 w-5" />
             </div>
             <div>
@@ -268,7 +268,7 @@ export const CheckoutView: React.FC = () => {
           </button>
         </header>
         <div className="mb-7">
-          <p className="text-sm font-bold text-[#0b5ed7]">{checkoutCopy.payment}</p>
+          <p className="text-sm font-bold text-[#A855F7]">{checkoutCopy.payment}</p>
           <h1 className="mt-2 text-3xl font-black text-slate-950">
             {checkoutCopy.title}
           </h1>
@@ -280,7 +280,7 @@ export const CheckoutView: React.FC = () => {
             <span>←</span>
             <span>{checkoutCopy.details}</span>
             <span>←</span>
-            <b className="rounded-full bg-[#0b5ed7] px-3 py-1.5 text-white">
+              <b className="rounded-full bg-[#A855F7] px-3 py-1.5 text-white">
               {checkoutCopy.payment}
             </b>
             <span>←</span>
@@ -323,7 +323,7 @@ export const CheckoutView: React.FC = () => {
                   <button
                     key={item}
                     onClick={() => setDeliveryChannel(item)}
-                    className={`min-h-11 rounded-lg border text-xs font-bold ${deliveryChannel === item ? "border-[#0b5ed7] bg-blue-50 text-[#0b5ed7]" : "border-slate-200 text-slate-500"}`}
+                    className={`min-h-11 rounded-lg border text-xs font-bold ${deliveryChannel === item ? "border-[#A855F7] bg-purple-50 text-[#A855F7]" : "border-slate-200 text-slate-500"}`}
                   >
                     {item === "whatsapp"
                       ? checkoutCopy.whatsapp
@@ -413,7 +413,7 @@ export const CheckoutView: React.FC = () => {
                           key={item.key}
                           type="button"
                           onClick={() => setDeliveryContactChannel(item.key)}
-                          className={`rounded-lg border p-3 text-right text-sm font-bold ${selectedSocial?.key === item.key ? "border-[#0b5ed7] bg-blue-50 text-[#0b5ed7]" : "border-slate-200 text-slate-600"}`}
+                          className={`rounded-lg border p-3 text-right text-sm font-bold ${selectedSocial?.key === item.key ? "border-[#A855F7] bg-purple-50 text-[#A855F7]" : "border-slate-200 text-slate-600"}`}
                         >
                           {item.label}
                         </button>
@@ -458,7 +458,7 @@ export const CheckoutView: React.FC = () => {
                 </div>
               )}
               {needsProof && (
-                <div className="mt-5 space-y-4 rounded-lg border border-blue-100 bg-blue-50 p-4">
+                <div className="mt-5 space-y-4 rounded-lg border border-purple-100 bg-purple-50 p-4">
                   <p className="text-sm leading-6 text-slate-600">
                     {checkoutCopy.transferNote}
                   </p>
@@ -512,7 +512,7 @@ export const CheckoutView: React.FC = () => {
             <button
               disabled={isSubmitting}
               onClick={placeOrder}
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#0b5ed7] text-base font-black text-white shadow-lg disabled:opacity-60"
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#A855F7] text-base font-black text-white shadow-lg disabled:opacity-60"
             >
               <CheckCircle2 className="h-5 w-5" />
               {isSubmitting
@@ -573,7 +573,7 @@ const Panel = ({
 }) => (
   <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
     <h2 className="mb-5 flex items-center gap-2 text-lg font-black">
-      <span className="text-[#0b5ed7]">{icon}</span>
+      <span className="text-[#A855F7]">{icon}</span>
       {title}
     </h2>
     {children}
@@ -606,7 +606,7 @@ const Field = ({
       value={value}
       onChange={(event) => change(event.target.value)}
       placeholder={placeholder}
-      className={`mt-2 box-border min-h-11 w-full max-w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#0b5ed7] focus:ring-2 focus:ring-blue-100 ${dir === "ltr" ? "text-left" : "text-right"}`}
+      className={`mt-2 box-border min-h-11 w-full max-w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#A855F7] focus:ring-2 focus:ring-purple-100 ${dir === "ltr" ? "text-left" : "text-right"}`}
     />
   </label>
 );
@@ -629,12 +629,12 @@ const Choice = ({
     type="button"
     disabled={disabled}
     onClick={click}
-    className={`flex min-w-0 w-full items-center gap-3 rounded-lg border p-4 text-right ${disabled ? "cursor-not-allowed opacity-50" : active ? "border-[#0b5ed7] bg-blue-50 ring-1 ring-[#0b5ed7]" : "border-slate-200 hover:border-slate-300"}`}
+    className={`flex min-w-0 w-full items-center gap-3 rounded-lg border p-4 text-right ${disabled ? "cursor-not-allowed opacity-50" : active ? "border-[#A855F7] bg-purple-50 ring-1 ring-[#A855F7]" : "border-slate-200 hover:border-slate-300"}`}
   >
     <span
-      className={`h-5 w-5 rounded-full border-2 p-1 ${active ? "border-[#0b5ed7] bg-[#0b5ed7] bg-clip-content" : "border-slate-300"}`}
+      className={`h-5 w-5 rounded-full border-2 p-1 ${active ? "border-[#A855F7] bg-[#A855F7] bg-clip-content" : "border-slate-300"}`}
     />
-    <span className="text-[#0b5ed7]">{icon}</span>
+    <span className="text-[#A855F7]">{icon}</span>
     <span className="min-w-0 flex-1">
       <strong className="block text-sm font-black">{title}</strong>
       <small className="mt-1 block text-xs font-normal text-slate-500">
@@ -655,7 +655,7 @@ const BankDetails = ({ settings, language }: { settings: any; language: "ar" | "
       {rows.map(([label, value]) => (
         <div
           key={label}
-          className="flex items-center justify-between gap-3 border-b border-blue-100 py-2 last:border-0"
+          className="flex items-center justify-between gap-3 border-b border-purple-100 py-2 last:border-0"
         >
           <span className="text-slate-500">{label}</span>
           <span
@@ -671,7 +671,7 @@ const BankDetails = ({ settings, language }: { settings: any; language: "ar" | "
               type="button"
               aria-label={language === "ar" ? `نسخ ${label}` : `Copy ${label}`}
               onClick={() => navigator.clipboard?.writeText(String(value))}
-              className="rounded p-1 text-[#0b5ed7] hover:bg-white"
+              className="rounded p-1 text-[#A855F7] hover:bg-white"
             >
               <Clipboard className="h-4 w-4" />
             </button>
@@ -724,9 +724,9 @@ const Receipt = ({
     <button
       type="button"
       onClick={pick}
-      className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-sm font-bold text-slate-600 hover:border-[#0b5ed7]"
+      className="flex min-h-28 w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 text-sm font-bold text-slate-600 hover:border-[#A855F7]"
     >
-      <Upload className="h-6 w-6 text-[#0b5ed7]" />
+      <Upload className="h-6 w-6 text-[#A855F7]" />
       {language === "ar" ? "اختيار صورة" : "Choose image"}
       <small className="font-normal text-slate-400">
         {language === "ar" ? "JPG، PNG أو WEBP حتى 5 MB" : "JPG, PNG or WEBP up to 5 MB"}
@@ -823,7 +823,7 @@ const Summary = ({
       />
       <div className="flex justify-between border-t border-slate-200 pt-4 font-black">
         <span>{copy.total}</span>
-        <span className="text-2xl text-[#0b5ed7]">{formatPrice(total, totalUSD)}</span>
+        <span className="text-2xl text-[#A855F7]">{formatPrice(total, totalUSD)}</span>
       </div>
     </div>
   </section>
@@ -847,14 +847,14 @@ const Line = ({
 const Empty = ({ navigateTo, language, copy }: { navigateTo: (route: string) => void; language: "ar" | "en"; copy: any }) => (
   <main dir={language === "ar" ? "rtl" : "ltr"} className="min-h-[70vh] bg-[#f7f8fa] px-4 py-20">
     <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-      <ShoppingBag className="mx-auto h-14 w-14 text-[#0b5ed7]" />
+      <ShoppingBag className="mx-auto h-14 w-14 text-[#A855F7]" />
       <h1 className="mt-5 text-xl font-black">{language === "ar" ? "سلة التسوق فارغة" : "Your cart is empty"}</h1>
       <p className="mt-2 text-sm text-slate-500">
         {language === "ar" ? "أضف منتجات إلى السلة للمتابعة." : "Add products to your cart to continue."}
       </p>
       <button
         onClick={() => navigateTo("#store")}
-        className="mt-6 rounded-lg bg-[#0b5ed7] px-6 py-3 text-sm font-black text-white"
+        className="mt-6 rounded-lg bg-[#A855F7] px-6 py-3 text-sm font-black text-white"
       >
         {copy.back}
       </button>
@@ -893,7 +893,7 @@ const Success = ({
       <div className="mt-7 flex flex-col gap-3 sm:flex-row">
         <button
           onClick={() => navigateTo(`#track-order/${order.orderNumber}`)}
-          className="flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#0b5ed7] text-sm font-black text-white"
+          className="flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#A855F7] text-sm font-black text-white"
         >
           {language === "ar" ? "متابعة الطلب" : "Track order"}
         </button>
