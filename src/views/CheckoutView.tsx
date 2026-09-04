@@ -74,9 +74,6 @@ export const CheckoutView: React.FC = () => {
   const [name, setName] = useState(currentUser?.name || "");
   const [phone, setPhone] = useState(currentUser?.phone || "");
   const [email, setEmail] = useState(currentUser?.email || "");
-  const [deliveryChannel, setDeliveryChannel] = useState<
-    "whatsapp" | "email" | "both"
-  >("whatsapp");
   const [fulfillment, setFulfillment] = useState<
     "pickup" | "delivery" | "remote"
   >("pickup");
@@ -112,7 +109,9 @@ export const CheckoutView: React.FC = () => {
   const governors = (state.settings.fulfillment?.governorates || []).filter(
     (item) => item.active,
   );
-  const socialOptions = Object.entries(state.settings.socialLinks || {})
+  const socialOptions = [
+    { key: "email", url: "", label: language === "ar" ? "البريد الإلكتروني" : "Email" },
+    ...Object.entries(state.settings.socialLinks || {})
     .filter(([key, value]) => (Boolean(value) || key === "facebook") && !["tiktok", "youtube"].includes(key))
     .map(([key, value]) => ({
       key,
@@ -130,7 +129,8 @@ export const CheckoutView: React.FC = () => {
             linkedin: "لينكدإن",
           } as Record<string, string>
         )[key] || key,
-    }));
+    })),
+  ];
   const selectedSocial = socialOptions.find(
     (item) => item.key === deliveryContactChannel,
   );
@@ -197,6 +197,8 @@ export const CheckoutView: React.FC = () => {
       return setError(t.deliveryChannelRequired);
     if (fulfillment === "remote" && !deliveryContactHandle.trim())
       return setError(language === "ar" ? "يرجى كتابة اسم المستخدم أو رابط حسابك" : "Please enter your username or profile link");
+    if (fulfillment === "remote" && deliveryContactChannel === "email" && !/^\S+@\S+\.\S+$/.test(deliveryContactHandle.trim()))
+      return setError(language === "ar" ? "يرجى كتابة بريد إلكتروني صحيح" : "Please enter a valid email address");
     if (needsProof && !transferor.trim())
       return setError(t.transferorRequired);
     if (needsProof && !receipt) return setError(t.receiptRequired);
@@ -207,7 +209,7 @@ export const CheckoutView: React.FC = () => {
         customerName: name.trim(),
         customerPhone: phone.trim(),
         customerEmail: email.trim(),
-        preferredDeliveryMethod: deliveryChannel,
+        preferredDeliveryMethod: "email",
         fulfillmentType: fulfillment === "remote" ? "delivery" : fulfillment,
         deliveryContactChannel: selectedSocial?.key,
         deliveryContactUrl: fulfillment === "remote" ? deliveryContactHandle.trim() : undefined,
@@ -318,24 +320,6 @@ export const CheckoutView: React.FC = () => {
                   wide
                 />
               </div>
-              <p className="mt-5 mb-2 text-sm font-bold">
-                {checkoutCopy.receive}
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {(["whatsapp", "email", "both"] as const).map((item) => (
-                  <button
-                    key={item}
-                    onClick={() => setDeliveryChannel(item)}
-                    className={`min-h-11 rounded-lg border text-xs font-bold ${deliveryChannel === item ? "border-[#A855F7] bg-purple-50 text-[#A855F7]" : "border-slate-200 text-slate-500"}`}
-                  >
-                    {item === "whatsapp"
-                      ? checkoutCopy.whatsapp
-                      : item === "email"
-                        ? checkoutCopy.emailShort
-                        : checkoutCopy.both}
-                  </button>
-                ))}
-              </div>
             </Panel>
             <Panel icon={<Truck />} title={checkoutCopy.fulfillment}>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -436,7 +420,8 @@ export const CheckoutView: React.FC = () => {
                         label={`${checkoutCopy.accountHandle} (${selectedSocial.label})`}
                         value={deliveryContactHandle}
                         change={setDeliveryContactHandle}
-                        placeholder={checkoutCopy.accountPlaceholder}
+                        type={selectedSocial.key === "email" ? "email" : "text"}
+                        placeholder={selectedSocial.key === "email" ? (language === "ar" ? "اكتب بريدك الإلكتروني" : "Enter your email") : checkoutCopy.accountPlaceholder}
                         dir="ltr"
                       />
                     </div>
