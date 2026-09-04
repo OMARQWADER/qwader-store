@@ -597,7 +597,7 @@ const Field = ({
   wide?: boolean;
 }) => (
   <label
-    className={`${wide ? "sm:col-span-2" : ""} block text-sm font-bold text-slate-700`}
+    className={`${wide ? "sm:col-span-2" : ""} block min-w-0 text-sm font-bold text-slate-700`}
   >
     {label}
     <input
@@ -606,7 +606,7 @@ const Field = ({
       value={value}
       onChange={(event) => change(event.target.value)}
       placeholder={placeholder}
-      className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#0b5ed7] focus:ring-2 focus:ring-blue-100"
+      className={`mt-2 box-border min-h-11 w-full max-w-full rounded-lg border border-slate-300 px-3 text-sm font-normal outline-none focus:border-[#0b5ed7] focus:ring-2 focus:ring-blue-100 ${dir === "ltr" ? "text-left" : "text-right"}`}
     />
   </label>
 );
@@ -629,13 +629,13 @@ const Choice = ({
     type="button"
     disabled={disabled}
     onClick={click}
-    className={`flex w-full items-center gap-3 rounded-lg border p-4 text-right ${disabled ? "cursor-not-allowed opacity-50" : active ? "border-[#0b5ed7] bg-blue-50 ring-1 ring-[#0b5ed7]" : "border-slate-200 hover:border-slate-300"}`}
+    className={`flex min-w-0 w-full items-center gap-3 rounded-lg border p-4 text-right ${disabled ? "cursor-not-allowed opacity-50" : active ? "border-[#0b5ed7] bg-blue-50 ring-1 ring-[#0b5ed7]" : "border-slate-200 hover:border-slate-300"}`}
   >
     <span
       className={`h-5 w-5 rounded-full border-2 p-1 ${active ? "border-[#0b5ed7] bg-[#0b5ed7] bg-clip-content" : "border-slate-300"}`}
     />
     <span className="text-[#0b5ed7]">{icon}</span>
-    <span className="flex-1">
+    <span className="min-w-0 flex-1">
       <strong className="block text-sm font-black">{title}</strong>
       <small className="mt-1 block text-xs font-normal text-slate-500">
         {text}
