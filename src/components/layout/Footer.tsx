@@ -12,7 +12,8 @@ import {
   MapPin,
   Heart,
   Sparkles,
-  CreditCard
+  CreditCard,
+  Send,
 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
@@ -24,7 +25,7 @@ export const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="mt-20 border-t border-white/10 bg-[#020617] text-slate-300 relative overflow-hidden transition-colors">
+    <footer className="site-footer mt-20 border-t border-white/10 bg-[#020617] text-slate-300 relative overflow-hidden transition-colors">
       {/* Ambient background glow */}
       <div className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
 
@@ -200,6 +201,22 @@ export const Footer: React.FC = () => {
                     title="Discord"
                   >
                     <Clock className="w-4 h-4" aria-hidden="true" />
+                  </a>
+                )}
+                {state.settings.socialLinks.telegram && (
+                  <a
+                    href={
+                      state.settings.socialLinks.telegram.startsWith('http')
+                        ? state.settings.socialLinks.telegram
+                        : `https://${state.settings.socialLinks.telegram}`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Telegram Channel"
+                    className="p-2 rounded-xl bg-sky-950/60 border border-sky-500/30 text-sky-400 hover:bg-sky-600 hover:text-white transition-all shadow-sm"
+                    title="Telegram"
+                  >
+                    <Send className="w-4 h-4" aria-hidden="true" />
                   </a>
                 )}
               </div>

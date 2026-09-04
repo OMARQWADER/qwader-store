@@ -143,6 +143,30 @@ body.light-theme {
   html.light .hero-slider [class*="text-violet-"] {
     color: #d8b4fe !important;
   }
+
+  .light-mode .site-footer,
+  html.light .site-footer {
+    background: #ffffff;
+    color: #334155;
+    border-color: #e2e8f0;
+  }
+
+  .light-mode .site-footer .border-white\/10,
+  html.light .site-footer .border-white\/10 {
+    border-color: #e2e8f0;
+  }
+
+  .light-mode .site-footer .bg-white\/5,
+  .light-mode .site-footer .bg-white\/\[0\.02\],
+  html.light .site-footer .bg-white\/5,
+  html.light .site-footer .bg-white\/\[0\.02\] {
+    background: #f8fafc;
+  }
+
+  .light-mode .site-footer .bg-black\/40,
+  html.light .site-footer .bg-black\/40 {
+    background: #f1f5f9;
+  }
 }
 
 .light-mode input::placeholder,
