@@ -1,15 +1,5 @@
+import { LegalView } from './LegalView';
+
 export default function PrivacyView() {
-  return (
-    <div style={{ maxWidth: 800, margin: "40px auto", padding: 20, direction: "rtl", fontFamily: "sans-serif" }}>
-      <h1>سياسة الخصوصية</h1>
-      <p>أهلاً بك في متجر Qwader Store. نحن نحترم خصوصيتك ونلتزم بحماية بياناتك الشخصية.</p>
-      <h2>1. البيانات التي نجمعها</h2>
-      <p>نجمع البيانات الأساسية التي تقدمها لنا عند تسجيل الدخول عبر Google أو البريد الإلكتروني.</p>
-      <h2>2. كيفية استخدام البيانات</h2>
-      <p>نستخدم بياناتك لإدارة حسابك، وتسهيل عملية تسجيل الدخول، وتقديم خدمات المتجر بشكل آمن.</p>
-      <h2>3. حماية البيانات</h2>
-      <p>نطبق إجراءات أمان عالية لحماية معلوماتك الشخصية.</p>
-      <p style={{ marginTop: 40, color: "#777" }}>آخر تحديث: سبتمبر 2026</p>
-    </div>
-  );
+  return <LegalView page="privacy" />;
 }

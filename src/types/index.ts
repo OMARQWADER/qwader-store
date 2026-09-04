@@ -382,6 +382,14 @@ export interface StoreSettings {
   fulfillment: FulfillmentSettings;
   featuredPromoCode?: string | null;
   heroSlides?: Record<string, boolean>;
+  legalContent?: {
+    termsAr: string;
+    termsEn: string;
+    privacyAr: string;
+    privacyEn: string;
+    returnsAr: string;
+    returnsEn: string;
+  };
 }
 
 export interface StoreState {

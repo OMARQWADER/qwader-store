@@ -298,6 +298,21 @@ export const Footer: React.FC = () => {
                 💬 {t.support}
               </button>
             </li>
+            <li>
+              <button onClick={() => navigateTo('#terms')} className="hover:text-purple-400 transition-colors">
+                📄 {language === 'ar' ? 'الشروط والأحكام' : 'Terms and Conditions'}
+              </button>
+            </li>
+            <li>
+              <button onClick={() => navigateTo('#privacy')} className="hover:text-purple-400 transition-colors">
+                🔒 {language === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}
+              </button>
+            </li>
+            <li>
+              <button onClick={() => navigateTo('#returns')} className="hover:text-purple-400 transition-colors">
+                ↩️ {language === 'ar' ? 'الإرجاع والاسترداد' : 'Returns and Refunds'}
+              </button>
+            </li>
           </ul>
         </div>
 

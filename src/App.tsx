@@ -43,6 +43,9 @@ const AdminDashboardView = lazyWithRecovery(() => import('./views/AdminDashboard
 const OrderTrackingView = lazyWithRecovery(() => import('./views/OrderTrackingView').then(m => ({ default: m.OrderTrackingView })));
 const LoginView = lazyWithRecovery(() => import('./views/LoginView'));
 const RegisterView = lazyWithRecovery(() => import('./views/RegisterView'));
+const TermsView = lazyWithRecovery(() => import('./views/TermsView'));
+const PrivacyView = lazyWithRecovery(() => import('./views/PrivacyView'));
+const ReturnsView = lazyWithRecovery(() => import('./views/ReturnsView'));
 
 import { MessageCircle, AlertTriangle } from 'lucide-react';
 
@@ -122,6 +125,12 @@ const AppContent: React.FC = () => {
         return <PaymentMethodsView />;
       case '#about':
         return <AboutView />;
+      case '#terms':
+        return <TermsView />;
+      case '#privacy':
+        return <PrivacyView />;
+      case '#returns':
+        return <ReturnsView />;
       case '#home':
       case '':
       default:

@@ -1664,6 +1664,37 @@ export const AdminDashboardView: React.FC = () => {
               </div>
             </div>
 
+            <div className="space-y-4 border-t border-white/10 pt-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-200 font-cairo">
+                  {language === 'ar' ? 'محتوى الصفحات القانونية' : 'Legal pages content'}
+                </h4>
+                <p className="mt-1 text-xs text-slate-400">
+                  {language === 'ar' ? 'عدّل النصوص التي تظهر للزبائن في الشروط والخصوصية والإرجاع. تحفظ التغييرات تلقائياً.' : 'Edit the customer-facing terms, privacy, and returns pages. Changes save automatically.'}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {[
+                  ['termsAr', 'الشروط والأحكام - عربي', 'Terms and Conditions - Arabic'],
+                  ['termsEn', 'الشروط والأحكام - English', 'Terms and Conditions - English'],
+                  ['privacyAr', 'سياسة الخصوصية - عربي', 'Privacy Policy - Arabic'],
+                  ['privacyEn', 'سياسة الخصوصية - English', 'Privacy Policy - English'],
+                  ['returnsAr', 'الإرجاع والاسترداد - عربي', 'Returns and Refunds - Arabic'],
+                  ['returnsEn', 'الإرجاع والاسترداد - English', 'Returns and Refunds - English'],
+                ].map(([key, labelAr, labelEn]) => (
+                  <label key={key} className="block text-xs font-semibold text-slate-300">
+                    {language === 'ar' ? labelAr : labelEn}
+                    <textarea
+                      rows={9}
+                      value={state.settings.legalContent?.[key as keyof NonNullable<typeof state.settings.legalContent>] || ''}
+                      onChange={(event) => updateSettings({ legalContent: { ...state.settings.legalContent, [key]: event.target.value } })}
+                      className="mt-2 min-h-44 w-full rounded-xl border border-slate-700 bg-slate-900 p-3 text-xs leading-6 text-slate-100 outline-none focus:border-purple-500"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* Accent Color & Banner */}
             <div className="space-y-4 pt-4 border-t border-white/10">
               <h4 className="text-sm font-bold text-slate-200 font-cairo">
