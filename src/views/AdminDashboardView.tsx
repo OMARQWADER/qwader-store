@@ -178,22 +178,26 @@ export const AdminDashboardView: React.FC = () => {
     (state?.supportTickets || [])[0]?.id || null
   );
   const [adminReplyText, setAdminReplyText] = useState('');
+  const orders = Array.isArray(state?.orders) ? state.orders : [];
 
   // Unconditional useMemo hooks and analytics calculations
   const filteredOrders = useMemo(() => {
-    return (state?.orders || []).filter((o) => {
-      if (orderStatusFilter !== 'all' && o.status !== orderStatusFilter) return false;
-      if (orderSearch.trim()) {
-        const q = orderSearch.toLowerCase();
-        return (
-          o.orderNumber.toLowerCase().includes(q) ||
-          o.customerName.toLowerCase().includes(q) ||
-          o.customerPhone.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [state?.orders, orderStatusFilter, orderSearch]);
+    try {
+      return orders.filter((o) => {
+        if (!o || typeof o !== 'object') return false;
+        if (orderStatusFilter !== 'all' && o.status !== orderStatusFilter) return false;
+        if (orderSearch.trim()) {
+          const q = orderSearch.toLowerCase();
+          return [o.orderNumber, o.customerName, o.customerPhone]
+            .some((value) => String(value || '').toLowerCase().includes(q));
+        }
+        return true;
+      });
+    } catch (error) {
+      console.error('Failed to filter admin orders:', error);
+      return [];
+    }
+  }, [orders, orderStatusFilter, orderSearch]);
 
   const filteredProducts = useMemo(() => {
     return (state?.products || []).filter((p) => {
@@ -211,18 +215,23 @@ export const AdminDashboardView: React.FC = () => {
 
   // Calculate Overview Analytics
   const { totalRevenueJOD, totalRevenueUSD, lowStockProducts } = useMemo(() => {
-    const completedOrders = (state?.orders || []).filter(
-      (o) => o.status === 'completed' || o.status === 'delivered'
-    );
+    try {
+      const completedOrders = orders.filter(
+        (o) => o && (o.status === 'completed' || o.status === 'delivered')
+      );
 
-    return {
-      totalRevenueJOD: completedOrders.reduce((sum, o) => sum + (o.totalJOD || 0), 0),
-      totalRevenueUSD: completedOrders.reduce((sum, o) => sum + (o.totalUSD || 0), 0),
-      lowStockProducts: (state?.products || []).filter(
-        (p) => p.stockQuantity <= p.lowStockThreshold
-      ),
-    };
-  }, [state?.orders, state?.products]);
+      return {
+        totalRevenueJOD: completedOrders.reduce((sum, o) => sum + (Number(o.totalJOD) || 0), 0),
+        totalRevenueUSD: completedOrders.reduce((sum, o) => sum + (Number(o.totalUSD) || 0), 0),
+        lowStockProducts: (state?.products || []).filter(
+          (p) => p && p.stockQuantity <= p.lowStockThreshold
+        ),
+      };
+    } catch (error) {
+      console.error('Failed to calculate admin order analytics:', error);
+      return { totalRevenueJOD: 0, totalRevenueUSD: 0, lowStockProducts: [] };
+    }
+  }, [orders, state?.products]);
 
   // Sales Trends Data
   const salesChartData = [
@@ -337,15 +346,19 @@ export const AdminDashboardView: React.FC = () => {
   };
 
   const handleAddDigitalKeyToOrder = (orderId: string) => {
-    const key = digitalKeyInputs[orderId];
-    if (!key || !key.trim()) return;
+    try {
+      const key = digitalKeyInputs[orderId];
+      if (!key || !key.trim()) return;
 
-    const order = (state?.orders || []).find((o) => o.id === orderId);
-    if (!order) return;
+      const order = orders.find((o) => o && o.id === orderId);
+      if (!order) return;
 
-    const currentKeys = order.digitalKeys || [];
-    updateOrderStatus(orderId, 'completed', [...currentKeys, key.trim()], undefined);
-    setDigitalKeyInputs((prev) => ({ ...prev, [orderId]: '' }));
+      const currentKeys = Array.isArray(order.digitalKeys) ? order.digitalKeys : [];
+      updateOrderStatus(orderId, 'completed', `تم تسليم المفتاح: ${key.trim()}`, `Digital key delivered: ${key.trim()}`, undefined, [...currentKeys, key.trim()]);
+      setDigitalKeyInputs((prev) => ({ ...prev, [orderId]: '' }));
+    } catch (error) {
+      console.error('Failed to deliver digital key:', error);
+    }
   };
 
   const handleAdminSendReply = (e: React.FormEvent) => {
@@ -590,7 +603,7 @@ export const AdminDashboardView: React.FC = () => {
           {/* Quick CSV Export */}
           <button
             id="admin-export-csv-top-btn"
-            onClick={() => exportOrdersToCsv(state?.orders || [])}
+            onClick={() => exportOrdersToCsv(orders)}
             className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition-all"
           >
             <Download className="w-3.5 h-3.5" />
@@ -603,7 +616,7 @@ export const AdminDashboardView: React.FC = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-white/10">
         {[
           { id: 'overview', label: t.tabOverview, icon: TrendingUp },
-          { id: 'orders', label: t.tabOrders, icon: Package, badge: (state?.orders || []).filter((o) => o.status === 'pending_payment' || o.status === 'pending').length },
+          { id: 'orders', label: t.tabOrders, icon: Package, badge: orders.filter((o) => o.status === 'pending_payment' || o.status === 'pending').length },
           { id: 'products', label: t.tabProducts, icon: ShoppingBag, badge: lowStockProducts.length },
           { id: 'promos', label: language === 'ar' ? 'كوبونات الخصم' : 'Promo Codes', icon: Tag },
           { id: 'branding', label: language === 'ar' ? 'الهوية والشعار' : 'Logo & Branding', icon: Palette },
@@ -666,7 +679,7 @@ export const AdminDashboardView: React.FC = () => {
                 {formatPrice(totalRevenueJOD, totalRevenueUSD)}
               </div>
               <span className="text-[11px] text-emerald-400 font-semibold">
-                {(state?.orders || []).filter((o) => o.status === 'completed' || o.status === 'delivered').length} طلب مكتمل ومسدد
+                {orders.filter((o) => o.status === 'completed' || o.status === 'delivered').length} طلب مكتمل ومسدد
               </span>
             </div>
 
@@ -676,10 +689,10 @@ export const AdminDashboardView: React.FC = () => {
                 <Package className="w-5 h-5" />
               </div>
               <div className="text-2xl font-black text-slate-100 font-display">
-                {(state?.orders || []).length}
+                {orders.length}
               </div>
               <span className="text-[11px] text-purple-300 font-semibold">
-                {(state?.orders || []).filter((o) => o.status === 'pending_payment' || o.status === 'pending').length} بانتظار التأكيد
+                {orders.filter((o) => o.status === 'pending_payment' || o.status === 'pending').length} بانتظار التأكيد
               </span>
             </div>
 
@@ -942,7 +955,10 @@ export const AdminDashboardView: React.FC = () => {
                           • {language === 'ar' ? it.productNameAr : it.productNameEn} (العدد: {it.quantity})
                         </span>
                         <span className="font-mono text-slate-400">
-                          {formatPrice(it.priceJOD * it.quantity, it.priceUSD * it.quantity)}
+                          {formatPrice(
+                            (Number(it.priceJOD) || 0) * (Number(it.quantity) || 0),
+                            (Number(it.priceUSD) || 0) * (Number(it.quantity) || 0)
+                          )}
                         </span>
                       </div>
                     ))}
@@ -1093,7 +1109,7 @@ export const AdminDashboardView: React.FC = () => {
                     </td>
 
                     <td className="p-3 text-center">
-                      <span className="text-amber-400 font-bold">★ {(p.rating ?? 5).toFixed(1)}</span>
+                      <span className="text-amber-400 font-bold">★ {(Number(p.rating) || 5).toFixed(1)}</span>
                     </td>
 
                     <td className="p-3 text-end">

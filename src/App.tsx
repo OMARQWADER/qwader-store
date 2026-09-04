@@ -57,24 +57,26 @@ const AppContent: React.FC = () => {
       return <MaintenanceScreen />;
     }
 
-    if (currentRoute.startsWith('#product/')) {
-      const productId = currentRoute.replace('#product/', '');
+    const route = currentRoute.startsWith('#') ? currentRoute : `#${currentRoute}`;
+
+    if (route.startsWith('#product/')) {
+      const productId = route.replace('#product/', '');
       return <ProductDetailView productId={productId} />;
     }
 
-    if (currentRoute.startsWith('#track-order/')) {
-      const orderId = currentRoute.replace('#track-order/', '');
+    if (route.startsWith('#track-order/')) {
+      const orderId = route.replace('#track-order/', '');
       return <OrderTrackingView initialOrderId={orderId} />;
     }
 
-    if (currentRoute.startsWith('#track/')) {
-      const orderId = currentRoute.replace('#track/', '');
+    if (route.startsWith('#track/')) {
+      const orderId = route.replace('#track/', '');
       return <OrderTrackingView initialOrderId={orderId} />;
     }
 
-    switch (currentRoute) {
+    switch (route) {
       case '#login':
-        return <LoginView />;
+        return <AccountView />;
       case '#register':
         return <RegisterView />;
       case '#track-order':

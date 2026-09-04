@@ -49,11 +49,43 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_name TEXT NOT NULL,
   customer_phone TEXT NOT NULL,
   customer_email TEXT NOT NULL,
+  fulfillment_type TEXT DEFAULT 'pickup',
+  delivery_contact_channel TEXT,
+  delivery_contact_url TEXT,
+  shipping_country TEXT,
+  shipping_city TEXT,
+  shipping_governorate TEXT,
   shipping_address TEXT,
   shipping_notes TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS fulfillment_type TEXT DEFAULT 'pickup';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal_jod NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal_usd NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_jod NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_usd NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_cost_jod NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_cost_usd NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_jod NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_usd NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cash_pickup';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending_payment';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_name TEXT DEFAULT '';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone TEXT DEFAULT '';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email TEXT DEFAULT '';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_contact_channel TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_contact_url TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_country TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_city TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_governorate TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_notes TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 
 -- Reviews table
 CREATE TABLE IF NOT EXISTS reviews (

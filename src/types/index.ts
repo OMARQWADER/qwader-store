@@ -1,24 +1,25 @@
-export type ProductCategory = 'games' | 'subscriptions' | 'psn_cards' | 'steam_cards';
+export type ProductCategory =
+  "games" | "subscriptions" | "psn_cards" | "steam_cards";
 
-export type UserRole = 'owner' | 'staff' | 'customer';
+export type UserRole = "owner" | "staff" | "customer";
 
-export type OrderStatus = 
-  | 'pending'
-  | 'processing'
-  | 'completed'
-  | 'cancelled'
-  | 'pending_payment'
-  | 'payment_proof'
-  | 'payment_confirmed'
-  | 'delivered'
-  | 'refunded';
+export type OrderStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "cancelled"
+  | "pending_payment"
+  | "payment_proof"
+  | "payment_confirmed"
+  | "delivered"
+  | "refunded";
 
-export type PaymentMethodType = 'cliq' | 'bank_transfer' | 'cash_pickup';
+export type PaymentMethodType = "cliq" | "bank_transfer" | "cash_pickup";
 export type PaymentMethod = PaymentMethodType;
 
-export type Language = 'ar' | 'en';
-export type ThemeMode = 'dark' | 'light';
-export type Currency = 'JOD' | 'USD';
+export type Language = "ar" | "en";
+export type ThemeMode = "dark" | "light";
+export type Currency = "JOD" | "USD";
 
 export interface Product {
   id: string;
@@ -37,7 +38,7 @@ export interface Product {
   badgeAr?: string;
   badgeEn?: string;
   image: string;
-  platform: 'PS5' | 'PS4 & PS5' | 'PS4' | 'Steam / PC' | 'Global / Multi';
+  platform: "PS5" | "PS4 & PS5" | "PS4" | "Steam / PC" | "Global / Multi";
   regionAr: string;
   regionEn: string;
   deliveryTypeAr: string;
@@ -161,8 +162,10 @@ export interface Order {
   customerPhone: string;
   customerEmail: string;
   digitalKeys?: string[];
-  preferredDeliveryMethod: 'whatsapp' | 'email' | 'both';
-  fulfillmentType: 'pickup' | 'delivery';
+  preferredDeliveryMethod: "whatsapp" | "email" | "both";
+  fulfillmentType: "pickup" | "delivery";
+  deliveryContactChannel?: string;
+  deliveryContactUrl?: string;
   shippingGovernorate?: string;
   shippingAddress?: string;
   shippingNotes?: string;
@@ -208,7 +211,7 @@ export interface User {
   city?: string;
   registeredAt: string;
   twoFactorEnabled?: boolean;
-  twoFactorMethod?: 'authenticator' | 'whatsapp' | 'sms' | 'email';
+  twoFactorMethod?: "authenticator" | "whatsapp" | "sms" | "email";
   twoFactorSecret?: string;
   twoFactorPhone?: string;
   twoFactorBackupCodes?: string[];
@@ -218,14 +221,14 @@ export interface User {
   sensitiveActionVerifiedUntil?: number; // session timestamp for step-up verification
 }
 
-export type SensitiveActionType = 
-  | 'admin_access'
-  | 'profile_update'
-  | 'role_update'
-  | 'factory_reset'
-  | 'store_settings_update'
-  | 'delete_product'
-  | 'export_data';
+export type SensitiveActionType =
+  | "admin_access"
+  | "profile_update"
+  | "role_update"
+  | "factory_reset"
+  | "store_settings_update"
+  | "delete_product"
+  | "export_data";
 
 export interface SensitiveVerificationChallenge {
   id: string;
@@ -238,7 +241,7 @@ export interface SensitiveVerificationChallenge {
   targetPhone?: string;
   code: string; // 6-digit code e.g. "849201"
   expiresAt: number; // ms timestamp
-  deliveryChannel: 'email' | 'sms' | 'whatsapp';
+  deliveryChannel: "email" | "sms" | "whatsapp";
   attemptsCount: number;
   metadata?: Record<string, any>;
   onSuccess?: () => void;
@@ -254,7 +257,7 @@ export interface SimulatedEmailMessage {
   actionNameEn: string;
   timestamp: string;
   expiresInSeconds: number;
-  channel: 'email' | 'sms' | 'whatsapp';
+  channel: "email" | "sms" | "whatsapp";
 }
 
 export interface SupportMessage {
@@ -277,8 +280,8 @@ export interface SupportTicket {
   userPhone: string;
   subject: string;
   orderNumber?: string;
-  category?: 'order_inquiry' | 'technical_help' | 'activation_help' | 'general';
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  category?: "order_inquiry" | "technical_help" | "activation_help" | "general";
+  status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
   lastActivity: string;
   updatedAt?: string;
@@ -299,7 +302,7 @@ export interface NotificationItem {
   titleEn: string;
   messageAr: string;
   messageEn: string;
-  type: 'order' | 'system' | 'promo' | 'support';
+  type: "order" | "system" | "promo" | "support";
   linkHash?: string;
   isRead: boolean;
   createdAt: string;

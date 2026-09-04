@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User as UserIcon, ShieldCheck, Package, LogOut, Mail, Phone, X, Settings, Bell, Key, Trash2, Edit2, Save, Camera } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { authClient } from '../lib/authClient';
+import { WelcomeView } from './WelcomeView';
 
 export const AccountView = () => {
   const {
@@ -57,7 +58,7 @@ export const AccountView = () => {
           authUid: data.user.id,
           email: data.user.email,
           name: data.user.name,
-          avatar: data.user.image,
+          avatar: typeof data.user.image === 'string' ? data.user.image : undefined,
         });
       }
     })();
@@ -90,6 +91,45 @@ export const AccountView = () => {
     }
   };
 
+  const getProfileNameParts = (fullName: string | undefined, userEmail: string) => {
+    const fallbackName = userEmail.split('@')[0].replace(/[._-]+/g, ' ').trim();
+    const [firstName, ...rest] = (fullName || fallbackName || 'QWADER Customer').split(' ');
+    return { firstName, lastName: rest.join(' ') || 'Customer' };
+  };
+
+  const completeWelcomeProfile = (data: { name: string; phone: string; city: string }) => {
+    if (!pendingAuthUser) return;
+    const { firstName, lastName } = getProfileNameParts(data.name, pendingAuthUser.email);
+    void createCustomerAccount({
+      firstName,
+      lastName,
+      phone: data.phone,
+      city: data.city,
+      email: pendingAuthUser.email,
+      promotionalEmails: promotionalEmails,
+      authUid: pendingAuthUser.authUid,
+      avatar: pendingAuthUser.avatar,
+    });
+    setPendingAuthUser(null);
+    navigateTo('#home');
+  };
+
+  const skipWelcomeProfile = () => {
+    if (!pendingAuthUser) return;
+    const { firstName, lastName } = getProfileNameParts(pendingAuthUser.name, pendingAuthUser.email);
+    void createCustomerAccount({
+      firstName,
+      lastName,
+      phone: '',
+      email: pendingAuthUser.email,
+      promotionalEmails: promotionalEmails,
+      authUid: pendingAuthUser.authUid,
+      avatar: pendingAuthUser.avatar,
+    });
+    setPendingAuthUser(null);
+    navigateTo('#home');
+  };
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -119,7 +159,7 @@ export const AccountView = () => {
       authUid: data.user.id,
       email: data.user.email,
       name: data.user.name,
-      avatar: data.user.image,
+      avatar: typeof data.user.image === 'string' ? data.user.image : undefined,
     });
   };
 
@@ -131,7 +171,7 @@ export const AccountView = () => {
   const handleGoogleSignIn = async () => {
     await authClient.signIn.social({
       provider: 'google',
-      callbackURL: window.location.origin + '/#account',
+      callbackURL: window.location.origin + '/account',
     });
   };
 
@@ -463,8 +503,17 @@ export const AccountView = () => {
             </div>
           )}
         </div>
+      ) : pendingAuthUser ? (
+        <WelcomeView
+          language={language}
+          email={pendingAuthUser.email}
+          initialName={pendingAuthUser.name || pendingAuthUser.email.split('@')[0]}
+          avatar={pendingAuthUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(pendingAuthUser.email)}`}
+          onComplete={completeWelcomeProfile}
+          onSkip={skipWelcomeProfile}
+        />
       ) : (
-        // Login Form (unchanged)
+        // Login Form
         <div className="max-w-md mx-auto p-8 rounded-3xl glass-card border border-white/10 space-y-6">
           <div className="text-center">
             <div className="w-16 h-16 rounded-2xl bg-purple-600/20 border border-purple-500/40 text-purple-400 flex items-center justify-center mx-auto mb-4">
@@ -611,7 +660,7 @@ export const AccountView = () => {
       )}
 
       {/* Profile Completion Modal */}
-      {pendingAuthUser && (
+      {false && pendingAuthUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl glass-card border border-white/10 space-y-6 relative">
             <button
