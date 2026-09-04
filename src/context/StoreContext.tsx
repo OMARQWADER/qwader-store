@@ -351,7 +351,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({
               ...(storeConfig && typeof storeConfig === "object" ? storeConfig.settings?.branding || storeConfig.branding || {} : {}),
             },
           },
-          products: Array.isArray(products) ? products.map(normalizeProduct) : [],
+          products: Array.isArray(products) && products.length > 0
+            ? products.map(normalizeProduct)
+            : INITIAL_STATE.products,
           orders: INITIAL_STATE.orders,
           users: INITIAL_STATE.users,
           reviews: Array.isArray(reviewsData) ? reviewsData : [],
